@@ -9,7 +9,7 @@ app = Flask(__name__)
 VERIFY_TOKEN = os.environ.get('VERIFY_TOKEN')
 PAGE_ACCESS_TOKEN = os.environ.get('PAGE_ACCESS_TOKEN')
 
-# --- قائمة الكلمات التي سيتم إزالتها (Stop Words) لتنظيف النص (تحسين إضافي) ---
+# --- قائمة الكلمات التي سيتم إزالتها (Stop Words) لتنظيف النص (تنقية فائقة) ---
 STOP_WORDS = [
     'ممكن', 'لو', 'سمحت', 'يا', 'فندم', 'عايز', 'من', 'فضلك', 'طيب', 'ايه', 'هو', 'هي', 
     'فين', 'ازاي', 'تكون', 'بتاعتكو', 'بتاعتنا', 'بتاعتكوا', 'بتاعتي', 'متاح', 'هل', 
@@ -17,7 +17,7 @@ STOP_WORDS = [
     'حضرتك', 'رقم', 'يرجى', 'الاستفسار', 'اريد', 'تواصل', 'عنوان', 'ابي', 'كام', 'عن', 
     'لوين', 'متوفر', 'شكرا', 'صباح', 'مساء', 'الخير', 'مساء الخير', 'صباح الخير', 'اهلا',
     'انا', 'احنا', 'كل', 'دلوقتي', 'علشان', 'مفيش', 'يوم', 'اخر', 'جديد', 'صورة', 'علي',
-    'في', 'الى', 'اوقات' # إضافات جديدة
+    'في', 'الى', 'اوقات', 'اذا', 'كنت', 'اسأل', 'بخصوص' # إضافات جديدة لزيادة النقاء
 ]
 
 def clean_text(text):
@@ -37,7 +37,7 @@ def clean_text(text):
 
 # --- الإجابات الطويلة (قاعدة المعرفة الشاملة) ---
 
-# الإجابة 1: التوصيل (مُحدَّث)
+# الإجابة 1: التوصيل
 ANSWER_DELIVERY = "خدمة التوصيل...\nالقاهره: خدمة توصيل أبو السيد متاحة الآن في مدينتي اربيسك والتجمع الأول والخامس والثالث وويست جيت أكتوبر فقط.\nللطلبات خارج هذه المناطق، نوفر لك سائقًا خاصًا لكن برسوم توصيل إضافية.\nخدمه التوصيل متوفره فى بورسعيد و القاهره و اسكندريه والغردقه فقط. للطلب يرجى الاتصال على 01212166660."
 
 # الإجابة 2: الجودة والأصالة والمنشأ والمواد الحافظة (مُجمَّع وشامل)
@@ -110,43 +110,43 @@ FAQ = {
     # ------------------ 1. التوصيل والشحن و الأوردر ------------------
     "توصيل": ANSWER_DELIVERY, "دليفري": ANSWER_DELIVERY, "شحن": ANSWER_DELIVERY,
     "مناطق توصيل": ANSWER_DELIVERY, "طلب اوردر": ANSWER_DELIVERY, "رقم الدليفري": ANSWER_DELIVERY,
-    "اونلاين": ANSWER_DELIVERY,
+    "اونلاين": ANSWER_DELIVERY, "وزن كرتونة": ANSWER_DELIVERY, 
     
     # ------------------ 2. الشكاوى والدود/الطفيليات (مفاتيح عالية الأهمية) ------------------
-    "شكوى": ANSWER_COMPLAINT_START, "شكاوي": ANSWER_COMPLAINT_START, "دود": ANSWER_COMPLAINT_START,
-    "طفيليات": ANSWER_COMPLAINT_START, "منتج فاسد": ANSWER_COMPLAINT_START, "متعفن": ANSWER_COMPLAINT_START,
-    "منتفخ": ANSWER_COMPLAINT_START, "متهتك": ANSWER_COMPLAINT_START, "صحة الانسان": ANSWER_COMPLAINT_START,
+    "شكوى": ANSWER_COMPLAINT_START, "دود": ANSWER_COMPLAINT_START,
+    "طفيليات": ANSWER_COMPLAINT_START, "فاسد": ANSWER_COMPLAINT_START, "متعفن": ANSWER_COMPLAINT_START,
+    "صحة": ANSWER_COMPLAINT_START, "سلامة الغذاء": ANSWER_COMPLAINT_START,
 
     # ------------------ 3. الجودة والأصالة والمنشأ والمواد الحافظة ------------------
-    "جودة": ANSWER_QUALITY_ORIGIN, "اصلي تقليد": ANSWER_QUALITY_ORIGIN, "صناديق خشب": ANSWER_QUALITY_ORIGIN,
-    "مواد حافظة": ANSWER_QUALITY_ORIGIN, "هولندا": ANSWER_QUALITY_ORIGIN, "نرويج": ANSWER_QUALITY_ORIGIN,
-    "منشأ رنجة": ANSWER_QUALITY_ORIGIN, "براين": ANSWER_QUALITY_ORIGIN, "تدخين": ANSWER_QUALITY_ORIGIN,
-
+    "جودة": ANSWER_QUALITY_ORIGIN, "اصلي": ANSWER_QUALITY_ORIGIN, "تقليد": ANSWER_QUALITY_ORIGIN, 
+    "كراتين": ANSWER_QUALITY_ORIGIN, "مواد حافظة": ANSWER_QUALITY_ORIGIN, "هولندا": ANSWER_QUALITY_ORIGIN, 
+    "نرويج": ANSWER_QUALITY_ORIGIN, "منشأ": ANSWER_QUALITY_ORIGIN, "تدخين": ANSWER_QUALITY_ORIGIN,
+    "غاليه": ANSWER_QUALITY_ORIGIN, "سعر": ANSWER_QUALITY_ORIGIN,
+    
     # ------------------ 4. التواصل المتخصص (أرقام الهاتف) ------------------
-    "ارقام تليفونات": ANSWER_CONTACTS, "ارقام التواصل": ANSWER_CONTACTS, "ارقام الادارة": ANSWER_CONTACTS,
+    "ارقام تليفونات": ANSWER_CONTACTS, "ارقام التواصل": ANSWER_CONTACTS, 
     "توريد جملة": ANSWER_CONTACTS, "مدير مبيعات جملة": ANSWER_CONTACTS, "توظيف": ANSWER_CONTACTS,
-    "شواغر عمل": ANSWER_CONTACTS, "مشتريات": ANSWER_CONTACTS, "تصدير": ANSWER_CONTACTS,
-    "مبيعات جملة": ANSWER_CONTACTS, "موارد بشرية": ANSWER_CONTACTS, "عدم الرد فروع": ANSWER_CONTACTS,
+    "مشتريات": ANSWER_CONTACTS, "تصدير": ANSWER_CONTACTS, "موارد بشرية": ANSWER_CONTACTS,
+    "عدم الرد فروع": ANSWER_CONTACTS,
 
     # ------------------ 5. فروع ومواعيد العمل ------------------
     "عناوين فروع": ANSWER_BRANCHES, "أماكن البيع": ANSWER_BRANCHES, "مواعيد العمل": ANSWER_BRANCHES,
     "بورسعيد": ANSWER_BRANCHES, "القاهرة": ANSWER_BRANCHES, "اسكندرية": ANSWER_BRANCHES,
 
     # ------------------ 6. المنتجات غير المتاحة (مُجمَّع) ------------------
-    "ساندوتشات السلطة": ANSWER_NOT_AVAILABLE_PRODUCTS, "منيو ساندوتشات": ANSWER_NOT_AVAILABLE_PRODUCTS, 
-    "رنجة فيليه صوص السكر": ANSWER_NOT_AVAILABLE_PRODUCTS, "فسيخ فيليه فاكيوم": ANSWER_NOT_AVAILABLE_PRODUCTS,
+    "ساندوتشات": ANSWER_NOT_AVAILABLE_PRODUCTS, "سلطة": ANSWER_NOT_AVAILABLE_PRODUCTS, 
+    "فيليه سكر": ANSWER_NOT_AVAILABLE_PRODUCTS, "فسيخ فيليه فاكيوم": ANSWER_NOT_AVAILABLE_PRODUCTS,
     
     # ------------------ 7. الرنجة (فيليه وناشفة وعيار 24) ------------------
     "رنجة فيليه": ANSWER_HERRING_DETAILS, "ناشفة": ANSWER_HERRING_DETAILS, "عيار 24": ANSWER_HERRING_DETAILS,
-    "رنجة عادية": ANSWER_HERRING_DETAILS,
 
     # ------------------ 8. الفسيخ (دم وحفظ ومنشأ) ------------------
-    "الفسيخ دم": ANSWER_FESIKH_DETAILS, "فسيخ": ANSWER_FESIKH_DETAILS, "سمكة الفسيخ": ANSWER_FESIKH_DETAILS,
-    "منشأ فسيخ": ANSWER_FESIKH_DETAILS, "بوري": ANSWER_FESIKH_DETAILS, "ياباني": ANSWER_FESIKH_DETAILS,
+    "الفسيخ دم": ANSWER_FESIKH_DETAILS, "فسيخ": ANSWER_FESIKH_DETAILS, "بوري": ANSWER_FESIKH_DETAILS, 
+    "ياباني": ANSWER_FESIKH_DETAILS,
 
     # ------------------ 9. التونة (النوع واللون) ------------------
     "نوع التونة": ANSWER_TUNA_DETAILS, "يلوفين": ANSWER_TUNA_DETAILS, "لحم احمر": ANSWER_TUNA_DETAILS,
-    "لحم ابيض": ANSWER_TUNA_DETAILS, "تونة كانز": ANSWER_TUNA_DETAILS, "تونة مستوردة": ANSWER_TUNA_DETAILS,
+    "لحم ابيض": ANSWER_TUNA_DETAILS, "تونة مستوردة": ANSWER_TUNA_DETAILS,
     
     # ------------------ 10. الحفظ والصلاحية ------------------
     "حفظ الرنجة": ANSWER_STORAGE_FROZEN_FRESH, "تخزين": ANSWER_STORAGE_FROZEN_FRESH, "صلاحية": ANSWER_STORAGE_FROZEN_FRESH,
@@ -154,17 +154,16 @@ FAQ = {
 
     # ------------------ 11. البطروخ والملوحة ------------------
     "بطروخ": ANSWER_ROE_SALTINESS, "مرمل": ANSWER_ROE_SALTINESS, "خرز": ANSWER_ROE_SALTINESS,
-    "دهني": ANSWER_ROE_SALTINESS, "ناشف": ANSWER_ROE_SALTINESS, "طري": ANSWER_ROE_SALTINESS,
-    "ملوحة": ANSWER_ROE_SALTINESS, "نسبة الملح": ANSWER_ROE_SALTINESS,
+    "دهني": ANSWER_ROE_SALTINESS, "طري": ANSWER_ROE_SALTINESS, "ملوحة": ANSWER_ROE_SALTINESS,
 
     # ------------------ 12. متفرقات ------------------
-    "سلمون": ANSWER_SALMON_DIFF, "وزن كرتونة": ANSWER_DELIVERY, "منيو": ANSWER_MENU, "كتالوج": ANSWER_MENU,
+    "سلمون": ANSWER_SALMON_DIFF, "منيو": ANSWER_MENU, "كتالوج": ANSWER_MENU,
 }
 
 
-# --- 3. دالة البحث عن الإجابة (مصفوفة النية المرجحة - لا تغيير في المنطق) ---
+# --- 3. دالة البحث عن الإجابة (تعديل الأوزان والعتبة) ---
 def get_answer(cleaned_message):
-    """تستخدم تحليل النية المرجحة لتحديد الإجابة الأنسب عبر المتطابقات الجزئية."""
+    """تستخدم تحليل النية المرجحة لتحديد الإجابة الأنسب عبر المتطابقات الجزئية (تم تعزيز الأوزان)."""
     
     cleaned_message_lower = cleaned_message.lower()
     
@@ -174,22 +173,21 @@ def get_answer(cleaned_message):
     best_match_answer = None
     max_score = 0
     
-    # الحد الأدنى للنقاط المطلوبة لضمان قوة النية بعد التنظيف
-    SCORE_THRESHOLD = 80 
+    # الحد الأدنى للنقاط المطلوبة (تم خفضه لزيادة الاستجابة)
+    SCORE_THRESHOLD = 75 
     
     for question_key, answer in FAQ.items():
         # تقسيم مفتاح القاموس إلى كلمات فريدة
         key_words = set(question_key.lower().split())
         
-        # 1. استخدام النسبة المئوية للتشابه (Fuzzy Ratio) كعامل أساسي
-        # نستخدم token_set_ratio لأنه يتجاهل ترتيب الكلمات والكلمات الزائدة
+        # 1. النسبة المئوية للتشابه (Fuzzy Ratio) كعامل أساسي
         ratio_score = fuzz.token_set_ratio(cleaned_message_lower, question_key.lower())
         
-        # 2. عامل قوة المفاتيح المشتركة (وزن إضافي لكل كلمة جوهرية مشتركة)
+        # 2. عامل قوة المفاتيح المشتركة 
         common_words_count = len(query_words.intersection(key_words))
         
-        # 3. حساب النتيجة المرجحة (نقاط النية)
-        total_score = ratio_score + (common_words_count * 10) 
+        # 3. حساب النتيجة المرجحة (نقاط النية) - (تم زيادة الوزن هنا من 10 إلى 15)
+        total_score = ratio_score + (common_words_count * 15) 
         
         if total_score > max_score:
             max_score = total_score
