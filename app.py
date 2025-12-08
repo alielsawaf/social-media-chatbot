@@ -14,7 +14,7 @@ STOP_WORDS = [
     'ممكن', 'لو', 'سمحت', 'يا', 'فندم', 'عايز', 'من', 'فضلك', 'طيب', 'ايه', 'هو', 'هي', 
     'فين', 'ازاي', 'تكون', 'بتاعتكو', 'بتاعتنا', 'بتاعتكوا', 'بتاعتي', 'متاح', 'هل', 
     'بكام', 'الفرق', 'بين', 'و', 'دي', 'دا', 'ده', 'الي', 'اللي', 'ان', 'أن', 'ليه', 'عشان',
-    'حضرتك', 'رقم', 'يرجى', 'الاستفسار', 'اريد'
+    'حضرتك', 'رقم', 'يرجى', 'الاستفسار', 'اريد', 'تواصل', 'عنوان', 'ابي' # تم إضافة المزيد لزيادة الدقة
 ]
 
 def clean_text(text):
@@ -93,7 +93,7 @@ ANSWER_CARTON_WEIGHT = "وزن كرتونة الرنجة المجمده الكر
 # الإجابة 20: الفرق بين المجمدة والفريش
 ANSWER_FROZEN_FRESH = "الرنجه المجمده: تحفظ في درجه حراره -18، صلاحيه 3 شهور، وتحفظ في التجميد و ليس التبريد. الرنجه الفريش: تحفظ في درجه حراره 0 الي 4، صلاحيه شهر، وتحفظ في التبريد (درجه حراره الثلاجه)."
 
-# --- 2. قائمة الأسئلة الشائعة والإجابات (FAQ) المحدثة بالمرادفات ---
+# --- 2. قائمة الأسئلة الشائعة والإجابات (FAQ) المحدثة بالمرادفات (تم تبسيط المفاتيح بعد إضافة Clean Text) ---
 FAQ = {
     # ------------------ 1. التوصيل ------------------
     "يوجد توصيل": ANSWER_DELIVERY,
@@ -103,7 +103,7 @@ FAQ = {
     "مناطق التوصيل": ANSWER_DELIVERY,
 
     # ------------------ 2. التأكد من الأصالة ------------------
-    "ازاي اتأكد رنجة رنجة ابو السيِد": ANSWER_AUTHENTICITY,
+    "اتأكد رنجة ابو السيِد": ANSWER_AUTHENTICITY,
     "رنجة أبو السيد": ANSWER_AUTHENTICITY,
     "اصلي تقليد": ANSWER_AUTHENTICITY,
     "صناديق خشب": ANSWER_AUTHENTICITY, 
@@ -111,7 +111,7 @@ FAQ = {
     # ------------------ 3. الساندوتشات والسلطة ------------------
     "ساندوتشات السلطة": ANSWER_SANDWICHES,
     "منيو ساندوتشات": ANSWER_SANDWICHES,
-    "الفروع المتاح الساندوتشات السلطة": ANSWER_SANDWICHES,
+    "الفروع الساندوتشات السلطة": ANSWER_SANDWICHES,
     
     # ------------------ 4. المنيو ------------------
     "منيو المنتجات": ANSWER_MENU,
@@ -119,13 +119,13 @@ FAQ = {
     "كتالوج": ANSWER_MENU,
 
     # ------------------ 5. الغلاء والجودة ------------------
-    "الرنجه بتاعتكو غاليه": ANSWER_HIGH_QUALITY,
+    "الرنجه غاليه": ANSWER_HIGH_QUALITY,
     "غاليه": ANSWER_HIGH_QUALITY,
-    "المنتجات بتاعتكوا غالية": ANSWER_HIGH_QUALITY,
+    "المنتجات غالية": ANSWER_HIGH_QUALITY,
     "السعر": ANSWER_HIGH_QUALITY,
     
     # ------------------ 6. التونة (الكانز) ------------------
-    "الكانز بتاعة التونة مستورده مصري": ANSWER_TUNA_CAN,
+    "الكانز التونة مستورده مصري": ANSWER_TUNA_CAN,
     "تونة مستوردة": ANSWER_TUNA_CAN,
     "كانز التونة": ANSWER_TUNA_CAN,
     
@@ -145,19 +145,18 @@ FAQ = {
     
     # ------------------ 10. مدير الحسابات ------------------
     "مدير الحسابات": ANSWER_ACCOUNT_MANAGER,
-    "مدير الحسابات": ANSWER_ACCOUNT_MANAGER,
-
+    
     # ------------------ 11. فرق الرنجة فيليه وعادية ------------------
     "الرنجة الفيليه الرنجة العادية": ANSWER_FILLET_DIFF,
     "رنجة فيليه عادية": ANSWER_FILLET_DIFF,
     "فيليه عادية": ANSWER_FILLET_DIFF,
     
     # ------------------ 12. نشفان الفيليه ------------------
-    "الرنجة الفيليه بتكون ناشفة": ANSWER_FILLET_DRY,
+    "الرنجة الفيليه ناشفة": ANSWER_FILLET_DRY,
     "ناشفة": ANSWER_FILLET_DRY,
 
     # ------------------ 13. دم الفسيخ ------------------
-    "الفسيخ بيكون دم": ANSWER_FESIKH_BLOOD,
+    "الفسيخ دم": ANSWER_FESIKH_BLOOD,
     "دم الفسيخ": ANSWER_FESIKH_BLOOD,
     
     # ------------------ 14. فرق التونة (أبيض/أحمر) ------------------
@@ -190,35 +189,50 @@ FAQ = {
 
     # ------------------ 20. فرق مجمدة/فريش ------------------
     "الرنجه المجمده الفريش": ANSWER_FROZEN_FRESH,
-    "رنجة مجمدة وفريش": ANSWER_FROZEN_FRESH,
+    "رنجة مجمدة فريش": ANSWER_FROZEN_FRESH,
     "صلاحية الرنجة": ANSWER_FROZEN_FRESH
 }
 
 
-# --- 3. دالة البحث عن الإجابة (المحدثة باستخدام fuzzywuzzy) ---
-def get_answer(user_message):
-    """تبحث عن إجابة مطابقة للسؤال أو عن كلمة مفتاحية بدرجة تشابه عالية."""
-    # user_message هنا هو بالفعل 'cleaned_message' من الويب هوك
-    user_message_lower = user_message.lower()
+# --- 3. دالة البحث عن الإجابة (المحدثة باستخدام مصفوفة النية المرجحة) ---
+def get_answer(cleaned_message):
+    """تستخدم تحليل النية المرجحة لتحديد الإجابة الأنسب عبر المتطابقات الجزئية."""
     
-    # حدد الحد الأدنى لنسبة التشابه المطلوبة (75% نسبة معقولة)
-    THRESHOLD = 75
+    cleaned_message_lower = cleaned_message.lower()
+    
+    # قائمة بجميع الكلمات الفريدة في السؤال النظيف
+    query_words = set(cleaned_message_lower.split())
     
     best_match_answer = None
-    highest_ratio = 0
+    max_score = 0
+    
+    # الحد الأدنى للنقاط المطلوبة لتجنب الردود العشوائية
+    # تم رفعه قليلاً لضمان قوة النية بعد التنظيف
+    SCORE_THRESHOLD = 80 
     
     for question_key, answer in FAQ.items():
-        # استخدام fuzz.token_set_ratio: يقارن الكلمات الرئيسية بغض النظر عن الترتيب والكلمات الزائدة
-        ratio = fuzz.token_set_ratio(user_message_lower, question_key.lower())
+        # تقسيم مفتاح القاموس إلى كلمات فريدة
+        key_words = set(question_key.lower().split())
         
-        if ratio > highest_ratio:
-            highest_ratio = ratio
+        # 1. استخدام النسبة المئوية للتشابه (Fuzzy Ratio) كعامل أساسي (وزن 70%)
+        # نستخدم token_set_ratio لأنه يتجاهل ترتيب الكلمات والكلمات الزائدة
+        ratio_score = fuzz.token_set_ratio(cleaned_message_lower, question_key.lower())
+        
+        # 2. عامل قوة المفاتيح المشتركة (وزن 30%)
+        # عدد الكلمات المشتركة بين السؤال ومفتاح الإجابة، وكل كلمة مشتركة تزيد من النتيجة.
+        common_words_count = len(query_words.intersection(key_words))
+        
+        # 3. حساب النتيجة المرجحة (نقاط النية)
+        # Ratio Score هو العامل الأكبر، ونضيف إليه نقاط الكلمات المشتركة (Weight = 10)
+        total_score = ratio_score + (common_words_count * 10) 
+        
+        if total_score > max_score:
+            max_score = total_score
             best_match_answer = answer
     
-    # إذا تجاوز أعلى نسبة تشابه الحد الأدنى (THRESHOLD)، يتم إرسال الإجابة
-    if highest_ratio >= THRESHOLD:
-        # طباعة النسبة المئوية للاختبار والمتابعة
-        print(f"Match found with ratio: {highest_ratio}%") 
+    # إذا تجاوزت النتيجة القصوى الحد الأدنى، يتم إرسال الإجابة
+    if max_score >= SCORE_THRESHOLD:
+        print(f"Intent found with Max Score: {max_score}")
         return best_match_answer
     
     return None # لم يتم العثور على إجابة
@@ -280,10 +294,10 @@ def webhook():
                         sender_id = messaging_event['sender']['id']
                         message_text = messaging_event['message']['text']
                         
-                        # الخطوة الجديدة: تنظيف الرسالة قبل إرسالها للبحث
+                        # الخطوة 1: تنظيف الرسالة قبل إرسالها للبحث
                         cleaned_message = clean_text(message_text) 
                         
-                        # 1. البحث في الأسئلة الشائعة باستخدام النص النظيف
+                        # الخطوة 2: البحث في الأسئلة الشائعة باستخدام مصفوفة النية المرجحة
                         response_text = get_answer(cleaned_message) 
                         
                         if response_text:
@@ -293,6 +307,7 @@ def webhook():
                             # 3. تحويل للمشرف البشري
                             handoff_message = "عذراً، لم أجد إجابة محددة. تم تحويل استفسارك إلى فريق الدعم لدينا، وسيرد عليك أحد الموظفين في أقرب وقت ممكن!"
                             send_message(sender_id, handoff_message)
+                            # طباعة كل من الرسالة الأصلية والنص النظيف لسهولة التشخيص اللاحق
                             print(f"*** تنبيه: تم تحويل السؤال التالي للمشرف: {message_text} (النص النظيف: {cleaned_message}) ***")
         except Exception as e:
             # طباعة الخطأ في السجلات لمزيد من التشخيص
