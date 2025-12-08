@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import os
-import requests 
+import requests
+from fuzzywuzzy import fuzz # تمت إضافة المكتبة الجديدة
 
 app = Flask(__name__)
 
@@ -63,7 +64,7 @@ ANSWER_24_KIND = "في عيار 24 عدد ساعات التدخين اطول م�
 # الإجابة 18: الطلب اونلاين
 ANSWER_ONLINE_ORDER = "غير متاح حاليا الطلب اونلاين يا فندم. لعمل اوردر بيكون عن طريق الإتصال على: 01212166660"
 
-# الإجابة 19: وزن الكرتونة
+# الإجابة 19: وزن كرتونة
 ANSWER_CARTON_WEIGHT = "وزن كرتونة الرنجة المجمده الكرتونه بتكون من 7.5 ل 8 كيلو يا فندم. ده مش جمله ده قطاعى عادى."
 
 # الإجابة 20: الفرق بين المجمدة والفريش
@@ -172,17 +173,33 @@ FAQ = {
     "صلاحية الرنجة": ANSWER_FROZEN_FRESH
 }
 
-# --- 3. دالة البحث عن الإجابة (كما هي) ---
+
+# --- 3. دالة البحث عن الإجابة (المحدثة باستخدام fuzzywuzzy) ---
 def get_answer(user_message):
-    """تبحث عن إجابة مطابقة للسؤال أو عن كلمة مفتاحية."""
+    """تبحث عن إجابة مطابقة للسؤال أو عن كلمة مفتاحية بدرجة تشابه عالية."""
     user_message_lower = user_message.lower()
     
-    for question_key, answer in FAQ.items():
-        # بحث بسيط عن الكلمات المفتاحية
-        if question_key in user_message_lower or user_message_lower in question_key.lower():
-            return answer
+    # حدد الحد الأدنى لنسبة التشابه المطلوبة (75% نسبة معقولة)
+    THRESHOLD = 75
     
-    return None 
+    best_match_answer = None
+    highest_ratio = 0
+    
+    for question_key, answer in FAQ.items():
+        # استخدام fuzz.token_set_ratio: يقارن الكلمات الرئيسية بغض النظر عن الترتيب والكلمات الزائدة
+        ratio = fuzz.token_set_ratio(user_message_lower, question_key.lower())
+        
+        if ratio > highest_ratio:
+            highest_ratio = ratio
+            best_match_answer = answer
+    
+    # إذا تجاوز أعلى نسبة تشابه الحد الأدنى (THRESHOLD)، يتم إرسال الإجابة
+    if highest_ratio >= THRESHOLD:
+        print(f"Match found with ratio: {highest_ratio}%")
+        return best_match_answer
+    
+    return None # لم يتم العثور على إجابة
+
 
 # --- 4. دالة إرسال الرد إلى فيسبوك ماسنجر (كما هي) ---
 def send_message(recipient_id, message_text):
@@ -259,4 +276,3 @@ def webhook():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
