@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 import os
 import requests 
 
-app = Flask(__inamenow__)
+app = Flask(__name__)
 
 # --- 1. قراءة متغيرات البيئة من Railway ---
 VERIFY_TOKEN = os.environ.get('VERIFY_TOKEN')
@@ -259,3 +259,4 @@ def webhook():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
