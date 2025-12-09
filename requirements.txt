@@ -4,3 +4,4 @@ requests
 fuzzywuzzy
 python-Levenshtein
 pyodbc
+gunicorn # سيرفر الويب المستخدم في Dockerfile
