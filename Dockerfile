@@ -14,30 +14,29 @@ RUN apt-get update \
         curl \
         gnupg \
         lsb-release \
-    # تجميع جميع ملفات التثبيت في سطر واحد لتقليل حجم الصورة
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # إضافة مستودع Microsoft وتثبيت درايفر ODBC 17
-# تم تحديث الطريقة لتجنب خطأ "Failed writing body"
+# **[تم تصحيح الرابط من debian/11 إلى debian/12 لحل مشكلة 404]**
 RUN set -ex; \
-    # جلب مفتاح GPG وحفظه بالطريقة الحديثة في keyrings
+    # جلب مفتاح GPG وحفظه بالطريقة الحديثة
     curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | tee /usr/share/keyrings/microsoft.gpg > /dev/null; \
     # إضافة المستودع باستخدام المفتاح الموقع
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/debian/11/prod debian main" | tee /etc/apt/sources.list.d/mssql-tools.list; \
-    # تحديث وتثبيت درايفر ODBC 17
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/debian/12/prod debian main" | tee /etc/apt/sources.list.d/mssql-tools.list; \
+    # التحديث وتثبيت درايفر ODBC 17
     apt-get update; \
-    ACCEPT_EULA=Y apt-get install -y msodbcsql17
+    ACCEPT_EULA=Y apt-get install -y msodbcsql17 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # --- 3. نسخ ملفات التطبيق وتثبيت المتطلبات ---
-# نسخ كل الملفات من جذر المشروع إلى الحاوية
 COPY . .
 
-# تثبيت مكتبات Python (يجب أن يحتوي requirements.txt على flask, pyodbc, gunicorn)
+# تثبيت مكتبات Python (من requirements.txt)
 RUN pip install --no-cache-dir -r requirements.txt
 
 # --- 4. أمر التشغيل النهائي ---
 ENV PORT 8080
 EXPOSE 8080
-# استخدم Gunicorn لتشغيل التطبيق بشكل مستقر
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
