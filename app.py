@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from fuzzywuzzy import fuzz
-
+print(">>> CODE VERSION 3.1: PRICING ONLY LOADED <<<")
 app = Flask(__name__)
 
 # --------------------------------------------------------------------------------
@@ -118,4 +118,5 @@ def ask_chatbot():
 if __name__ == '__main__':
     # لتشغيل التطبيق على localhost:5000 
     app.run(debug=True)
+
 
