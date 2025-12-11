@@ -12,8 +12,7 @@ app = Flask(__name__)
 # --------------------------------------------------------------------------------
 # ⚠️⚠️ المتغيرات الحيوية للرد ⚠️⚠️
 # يجب وضع الـ Access Token الخاص بالصفحة هنا
-PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD
-" 
+PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD"
 # --------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------
@@ -183,3 +182,4 @@ def ask_chatbot_manual():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
