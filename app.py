@@ -1,18 +1,25 @@
 from flask import Flask, request, jsonify
 from fuzzywuzzy import fuzz
+import requests # مكتبة لإرسال الطلبات الخارجية (مثل إرسال الرد إلى Meta)
 
 # --------------------------------------------------------------------------------
 # علامة تأكيد قراءة الكود الجديد
-print(">>> CODE VERSION 3.2: SYNTAX CLEANED AND PRICING ONLY LOADED <<<")
+print(">>> CODE VERSION 4.0: READY TO RESPOND (REQUIRES TOKEN) <<<")
 # --------------------------------------------------------------------------------
 
 app = Flask(__name__)
 
 # --------------------------------------------------------------------------------
+# ⚠️⚠️ المتغيرات الحيوية للرد ⚠️⚠️
+# يجب وضع الـ Access Token الخاص بالصفحة هنا
+PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD
+" 
+# --------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------
 # قاعدة بيانات الأسئلة والأجوبة (FAQ Knowledge Base)
 # --------------------------------------------------------------------------------
 
-# ⚠️ تم تصحيح المسافات والحروف في هذا الجزء لتجنب خطأ السطر 15
 FAQ = [
     {
         'questions': [
@@ -40,6 +47,36 @@ FAQ = [
         )
     }
 ]
+
+# --------------------------------------------------------------------------------
+# دالة إرسال الرسالة إلى Meta API
+# --------------------------------------------------------------------------------
+def send_message(recipient_id, message_text):
+    """يرسل رسالة إلى المستخدم عبر Meta (Messenger/WhatsApp) API."""
+    if not PAGE_ACCESS_TOKEN or PAGE_ACCESS_TOKEN == "YOUR_FACEBOOK_PAGE_ACCESS_TOKEN_HERE":
+        print("⚠️ ERROR: PAGE_ACCESS_TOKEN is not set!")
+        return
+        
+    params = {"access_token": PAGE_ACCESS_TOKEN}
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "messaging_type": "RESPONSE",
+        "recipient": {"id": recipient_id},
+        "message": {"text": message_text}
+    }
+    
+    # نقطة النهاية (Endpoint) القياسية للماسنجر
+    url = "https://graph.facebook.com/v19.0/me/messages" 
+    
+    try:
+        response = requests.post(url, params=params, headers=headers, json=data)
+        response.raise_for_status() # إظهار خطأ إذا كان الرد غير ناجح (4xx أو 5xx)
+        print(f"Message sent successfully to {recipient_id}. Status: {response.status_code}")
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to send message: {e}")
+        if response.text:
+            print(f"Meta API Response: {response.text}")
+
 
 # --------------------------------------------------------------------------------
 # الدالة الرئيسية للبحث والمقارنة (باستخدام FuzzyWuzzy)
@@ -83,7 +120,6 @@ def get_answer(user_question):
 # --------------------------------------------------------------------------------
 @app.route('/webhook', methods=['GET'])
 def webhook_verification():
-    # ⚠️ يجب التأكد أن هذا التوكن يتطابق مع التوكن في منصة Meta
     VERIFY_TOKEN = "161019" 
     
     mode = request.args.get("hub.mode")
@@ -102,12 +138,28 @@ def webhook_verification():
 
 @app.route('/webhook', methods=['POST'])
 def webhook_inbound():
-    # هذا هو المسار الذي سيتلقى رسائل المستخدمين الفعلية
     data = request.get_json()
     
-    # يجب استخلاص الرسالة من الـ JSON هنا في مرحلة لاحقة
-    # إذا كان التحقق ناجحًا، فسيصل هنا الـ JSON برسائل المستخدم
-    
+    try:
+        # 1. استخلاص بيانات الرسالة (افتراضًا لصيغة الماسنجر القياسية)
+        entry = data.get('entry', [])[0]
+        messaging = entry.get('messaging', [])[0]
+        sender_id = messaging['sender']['id']
+        message_text = messaging['message']['text']
+        
+        if message_text:
+            # 2. الحصول على الرد من قاعدة البيانات
+            response_data = get_answer(message_text)
+            bot_response = response_data['answer']
+            
+            # 3. إرسال الرد إلى العميل
+            send_message(sender_id, bot_response)
+            
+            print(f"Processed message from {sender_id}: '{message_text}'")
+    except Exception as e:
+        # غالبًا ما تصل إشعارات أخرى (مثل رسالة قراءة) لا تحتوي على نص، نتجاهلها
+        print(f"Error processing inbound message: {e}")
+        
     return "EVENT_RECEIVED", 200 
 
 # --------------------------------------------------------------------------------
@@ -130,5 +182,4 @@ def ask_chatbot_manual():
 # --------------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    # تشغيل التطبيق محلياً 
     app.run(debug=True)
