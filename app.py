@@ -1,10 +1,11 @@
 from flask import Flask, request, jsonify
 from fuzzywuzzy import fuzz
-import requests # مكتبة لإرسال الطلبات الخارجية (مثل إرسال الرد إلى Meta)
+import requests
+import re # لإضافة دعم للتعبيرات النمطية (Regular Expressions)
 
 # --------------------------------------------------------------------------------
 # علامة تأكيد قراءة الكود الجديد
-print(">>> CODE VERSION 4.0: READY TO RESPOND (REQUIRES TOKEN) <<<")
+print(">>> CODE VERSION 5.0: FULL FAQ, SYNTAX FIXED, GREETINGS & CLEANING ADDED <<<")
 # --------------------------------------------------------------------------------
 
 app = Flask(__name__)
@@ -16,10 +17,28 @@ PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFe
 # --------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------
+# ردود التحية المنفصلة (Greetings)
+# --------------------------------------------------------------------------------
+
+GREETINGS = {
+    'morning': [
+        'صباح الخير', 'صباح الفل', 'صباح الجمال', 'صباح العسل', 'صباح الياسمين', 'صباح الدلع',
+        'صباح النور' # أضيفت من طلبك
+    ],
+    'evening': [
+        'مساء الخير', 'مساء النور', 'مساء الفل', 'مساء الجمال', 'مساء العسل', 'مساء الياسمين', 'مساء الدلع',
+    ],
+    'greetings': [
+        'سلام عليكم', 'السلام عليكم', 'سلانو عليكو', 'سلام', 'سلامات',
+    ],
+}
+
+# --------------------------------------------------------------------------------
 # قاعدة بيانات الأسئلة والأجوبة (FAQ Knowledge Base)
 # --------------------------------------------------------------------------------
 
 FAQ = [
+    # ------------------ السؤال الأول: الأسعار ------------------
     {
         'questions': [
             'الأسعار غالية', 'منتجاتكم سعرها عالي', 'ليه بتبيعوا أغلى من غيركم؟',
@@ -44,38 +63,40 @@ FAQ = [
             "احنا بنملح سمك الرنجة بمحلول براين و بيتم تدخين السمك علي البارد بنشارة ألماني، "
             "عشان نضمن لحضرتك منتج صحي مدخن بشكل صحيح جاهز علي الأكل."
         )
+    },
+    # ------------------ السؤال الثاني: الطفيليات/الدود ------------------
+    {
+        'questions': [
+            'الرنجة فيها دود', 'الرنجة دي طفيليات؟', 'Feha dud?', 'Is there any worm in the fish?',
+            'السمك ده ممكن يكون فيه دود حي؟', 'ليه في حاجات بتتحرك في الرنجة؟',
+            'لقيت دود في الرنجة بتاعتكوا!', 'في حاجة غريبة جوا السمكة شكلها زي الدود.',
+            'أنا قلقان من شكل النقط البيضاء دي.', 'هل جودة الرنجة دي كويسة ولا فيها مشاكل؟',
+            'أنا خايف السمك يكون فاسد بسبب الحاجة اللي جوا دي.', 'الديدان في سمك الرنجة؟',
+            'Fish has worms?', 'Eih dah elly goh el samaka?', 'ما هي النقط البيضاء/السوداء في السمك؟',
+            'هل وجود الطفيليات عادي في الرنجة؟', 'الدود ده بيموت ولا حي؟'
+        ],
+        'answer': (
+            "مساء الخير يا فندم، اللي ظهر في السمكة دي مش دود، دي بتكون طفيليات. الطفيليات في سمكة الرنجة توجد في التجويف البطني لأنها تدخل في عمليات الامتصاص والتمثيل الغذائي للسمكة. "
+            "لا تصيب الإنسان، وزيادة في الوقاية، يتم تجميد الأسماك عند درجة -35 إلى -40 تحت الصفر لتصبح الطفيليات جزءاً من الأمعاء ولا تؤثر على آكلها. الدود ده لو كان حي هيكون خطر على صحة الإنسان."
+        )
     }
 ]
 
 # --------------------------------------------------------------------------------
-# دالة إرسال الرسالة إلى Meta API
+# تنظيف السؤال من عبارات الطلب (لو سمحت، من فضلك، إلخ)
 # --------------------------------------------------------------------------------
-def send_message(recipient_id, message_text):
-    """يرسل رسالة إلى المستخدم عبر Meta (Messenger/WhatsApp) API."""
-    if not PAGE_ACCESS_TOKEN or PAGE_ACCESS_TOKEN == "YOUR_FACEBOOK_PAGE_ACCESS_TOKEN_HERE":
-        print("⚠️ ERROR: PAGE_ACCESS_TOKEN is not set!")
-        return
-        
-    params = {"access_token": PAGE_ACCESS_TOKEN}
-    headers = {"Content-Type": "application/json"}
-    data = {
-        "messaging_type": "RESPONSE",
-        "recipient": {"id": recipient_id},
-        "message": {"text": message_text}
-    }
-    
-    # نقطة النهاية (Endpoint) القياسية للماسنجر
-    url = "https://graph.facebook.com/v19.0/me/messages" 
-    
-    try:
-        response = requests.post(url, params=params, headers=headers, json=data)
-        response.raise_for_status() # إظهار خطأ إذا كان الرد غير ناجح (4xx أو 5xx)
-        print(f"Message sent successfully to {recipient_id}. Status: {response.status_code}")
-    except requests.exceptions.RequestException as e:
-        print(f"Failed to send message: {e}")
-        if response.text:
-            print(f"Meta API Response: {response.text}")
+CLEANING_PATTERNS = re.compile(
+    r'(يا فندم|لو سمحت|من فضلك|كنت حابب استفسر|استفسار صغير|عندي سؤال بخصوص|عندي استفسار)',
+    re.IGNORECASE
+)
 
+def clean_query(query):
+    """يزيل الكلمات غير الضرورية من السؤال لتحسين دقة FuzzyWuzzy."""
+    # 1. إزالة الأنماط المحددة
+    cleaned = CLEANING_PATTERNS.sub('', query).strip()
+    # 2. إزالة المسافات الزائدة
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    return cleaned
 
 # --------------------------------------------------------------------------------
 # الدالة الرئيسية للبحث والمقارنة (باستخدام FuzzyWuzzy)
@@ -85,14 +106,31 @@ def get_answer(user_question):
     """
     يبحث عن الإجابة الأقرب لسؤال المستخدم في قاعدة البيانات FAQ.
     """
+    # 1. التحقق من التحيات أولاً
+    normalized_query = user_question.strip().lower()
+    
+    # ردود المساء والصباح
+    if any(phrase.lower() in normalized_query for phrase in GREETINGS['evening']):
+        return {'answer': "مساء الخير يا فندم", 'confidence_score': 100}
+    
+    if any(phrase.lower() in normalized_query for phrase in GREETINGS['morning']):
+        return {'answer': "صباح الخير يا فندم", 'confidence_score': 100}
+
+    # ردود السلام عليكم
+    if any(phrase.lower() in normalized_query for phrase in GREETINGS['greetings']):
+        return {'answer': "وعليكم السلام", 'confidence_score': 100}
+
+
+    # 2. تنظيف السؤال قبل البحث في FAQ
+    cleaned_query = clean_query(user_question)
+    
     best_match_score = 0
     best_answer = None
 
-    normalized_query = user_question.strip().lower()
-
     for item in FAQ:
         for question_phrase in item['questions']:
-            score = fuzz.ratio(normalized_query, question_phrase.lower())
+            # نحسب درجة التشابه بناءً على السؤال المنظف
+            score = fuzz.ratio(cleaned_query.lower(), question_phrase.lower())
             
             if score > best_match_score:
                 best_match_score = score
@@ -113,6 +151,35 @@ def get_answer(user_question):
             ),
             'confidence_score': best_match_score
         }
+
+# --------------------------------------------------------------------------------
+# دالة إرسال الرسالة إلى Meta API
+# --------------------------------------------------------------------------------
+def send_message(recipient_id, message_text):
+    """يرسل رسالة إلى المستخدم عبر Meta (Messenger/WhatsApp) API."""
+    if not PAGE_ACCESS_TOKEN or PAGE_ACCESS_TOKEN == "YOUR_FACEBOOK_PAGE_ACCESS_TOKEN_HERE":
+        print("⚠️ ERROR: PAGE_ACCESS_TOKEN is not set!")
+        return
+        
+    params = {"access_token": PAGE_ACCESS_TOKEN}
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "messaging_type": "RESPONSE",
+        "recipient": {"id": recipient_id},
+        "message": {"text": message_text}
+    }
+    
+    url = "https://graph.facebook.com/v19.0/me/messages" 
+    
+    try:
+        response = requests.post(url, params=params, headers=headers, json=data)
+        response.raise_for_status() 
+        print(f"Message sent successfully to {recipient_id}. Status: {response.status_code}")
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to send message: {e}")
+        if response.text:
+            print(f"Meta API Response: {response.text}")
+
 
 # --------------------------------------------------------------------------------
 # 🚨 مسار Webhook: للتحقق (GET) وتلقي الرسائل (POST)
@@ -182,4 +249,3 @@ def ask_chatbot_manual():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
