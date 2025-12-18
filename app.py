@@ -102,7 +102,7 @@ def get_answer(user_question):
     
     # تحيات سريعة
     if any(word in q for word in ['سلام', 'هلو', 'ازيك', 'صباح', 'مساء']):
-        return "أهلاً بك في رنجة أبو السيد، كيف يمكننا مساعدتك اليوم؟"
+        return "أهلاً بك في أبو السيد، كيف يمكننا مساعدتك اليوم؟"
 
     best_answer = None
     max_matches = 0
@@ -122,7 +122,7 @@ def get_answer(user_question):
         return best_answer
     else:
         # إذا لم يفهم البوت، يرد برابط المنيو كحل وسط
-        return "عذراً، لم أفهم طلبك بدقة. يمكنك الاطلاع على المنيو بجميع الأسعار من هنا:\nhttps://heyzine.com/flip-book/31946f16d5.html\n\nأو اسألني عن (التوصيل، الجملة، الشغل، أو جودة الرنجة)."
+        return "عذراً، لم أفهم طلبك بدقة. يمكنك الاطلاع على المنيو بجميع الأسعار من هنا:\nhttps://heyzine.com/flip-book/31946f16d5.html\n\nأو توضيح سؤال حضرتك بشكل أفضل حتي أستطيع مساعدتك."
 
 @app.route('/webhook', methods=['GET'])
 def verify():
@@ -154,3 +154,4 @@ def send_message(recipient_id, message_text):
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
+
