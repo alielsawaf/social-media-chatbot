@@ -170,7 +170,7 @@ def get_answer(user_text):
         return {"text": "أهلاً بحضرتك 👋", "quick_replies": None}
 
     log_failed(user_text)
-    return {"text": f"مش فاهم حضرتك قوي 😅\n📖 المنيو:\n{MENU_LINK}", "quick_replies": None}
+    return {"text": f"ممكن حضرتك توضح السؤال اكتر \n📖 المنيو:\n{MENU_LINK}", "quick_replies": None}
 
 # ================== التعامل مع الرسائل الطويلة ==================
 def process_long_message(user_text):
@@ -238,3 +238,4 @@ def download_csv():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
