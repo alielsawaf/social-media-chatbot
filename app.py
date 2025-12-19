@@ -19,7 +19,7 @@ CSV_FILE = os.path.join(os.path.dirname(__file__), "failed_questions.csv")
 
 PRICE_WORDS = [
     'سعر','بكام','كام','عامل','تكلفه','ثمن','قيمة','سعره','الاسعار',
-    'كم','هل عندكم','عايز','من فضلك','لو سمحت','حابب','عايزه','اريد','من فضلك','استفسار','بخصوص','عندكو','بسال','عن','بقولك'
+    'كم','هل عندكم','عايز','من فضلك','لو سمحت','حابب','عايزه','اريد'
 ]
 GENERAL_TRIGGERS = [
     'منيو','المينيو','عايز المنيو','ابعت المنيو','بتبيعو ايه','ايه المنتجات',
@@ -45,7 +45,7 @@ def clean_arabic_text(text):
 
 def clean_for_product(text):
     text = clean_arabic_text(text)
-    for w in PRICE_WORDS + ['بتبيعو','عندكو','ازاي','ممكن','بستفسر','بسال','عايز','اعرف','بكام']:
+    for w in PRICE_WORDS + ['بتبيعو','عندكو','ازاي','ممكن']:
         text = text.replace(w, "")
     return text.strip()
 
@@ -60,9 +60,14 @@ def log_failed(question):
             writer.writerow(["question", "created_at"])
         writer.writerow([question, datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
 
-# ================== المنتجات (نفس القائمة الخاصة بك) ==================
+# ================== دالة تقسيم الجمل الطويلة ==================
+def split_user_text(text):
+    parts = re.split(r"[.؟!,؛]", text)
+    return [p.strip() for p in parts if p.strip()]
+
+# ================== المنتجات ==================
 PRODUCTS = [
-    # الرنجة
+      # الرنجة
     {'kw': ['رنجه مدخنه مبطرخه مرمله', 'رنجه مبطرخه', 'رنجه مرمله'], 'price': '250 EGP', 'w': '1 KG'},
     {'kw': ['رنجه مدخنه', 'رنجه عاديه'], 'price': '200 EGP', 'w': '1 KG'},
     {'kw': ['رنجه مدخنه 24 قيراط', 'رنجه 24', 'رنجه عيار 24'], 'price': '300 EGP', 'w': '1 KG'},
@@ -165,7 +170,17 @@ def get_answer(user_text):
         return {"text": "أهلاً بحضرتك 👋", "quick_replies": None}
 
     log_failed(user_text)
-    return {"text": f"ممكن حضرتك توضحلي السؤال اكتر\n📖 المنيو:\n{MENU_LINK}", "quick_replies": None}
+    return {"text": f"مش فاهم حضرتك قوي 😅\n📖 المنيو:\n{MENU_LINK}", "quick_replies": None}
+
+# ================== التعامل مع الرسائل الطويلة ==================
+def process_long_message(user_text):
+    parts = split_user_text(user_text)
+    responses = []
+    for part in parts:
+        ans = get_answer(part)
+        if ans['text'] not in [r['text'] for r in responses]:
+            responses.append(ans)
+    return responses
 
 # ================== Webhook ==================
 @app.route('/webhook', methods=['GET'])
@@ -194,8 +209,9 @@ def webhook():
                 # التعامل مع الرسائل النصية
                 elif "message" in msg_event and "text" in msg_event["message"]:
                     user_text = msg_event["message"]["text"]
-                    result = get_answer(user_text)
-                    send_message(sender, result["text"], result["quick_replies"])
+                    responses = process_long_message(user_text)
+                    for res in responses:
+                        send_message(sender, res["text"], res.get("quick_replies"))
                     
     return "ok", 200
 
