@@ -130,14 +130,18 @@ def get_answer(user_text):
                 break
 
     if len(matches) > 1:
-        return {
-            "text": "حضرتك تقصد أي منتج؟",
-            "quick_replies": [
-                {"content_type":"text","title":m['kw'][0][:20],"payload":f"PRODUCT|{m['kw'][0]}"}
-                for m in matches
-            ]
-        }
+    quick_replies = []
+    for m in matches[:10]:
+        quick_replies.append({
+            "content_type": "text",
+            "title": m['kw'][0][:20],
+            "payload": f"PRODUCT_INDEX|{PRODUCTS.index(m)}"
+        })
 
+    return {
+        "text": "حضرتك تقصد أي منتج بالظبط؟",
+        "quick_replies": quick_replies
+    }
     if len(matches) == 1:
         p = matches[0]
         return f"✔️ {p['kw'][0]}\n💰 {p['price']}\n⚖️ {p['w']}"
@@ -174,15 +178,20 @@ def webhook():
 
                 if "quick_reply" in msg["message"]:
                     payload = msg["message"]["quick_reply"]["payload"]
-                    if payload.startswith("PRODUCT|"):
-                        text = payload.replace("PRODUCT|", "")
+                    if payload.startswith("PRODUCT_INDEX|"):
+                    index = int(payload.split("|")[1])
+                    p = PRODUCTS[index]
 
-                reply = get_answer(text)
-                if isinstance(reply, dict):
-                    send_message(sender, reply["text"], reply["quick_replies"])
-                else:
-                    send_message(sender, reply)
-    return "ok"
+                    reply = (
+                    f"✔️ المنتج متوفر\n"
+                    f"📌 {p['kw'][0]}\n"
+                    f"💰 السعر: {p['price']}\n"
+                    f"⚖️ الوزن: {p['w']}\n\n"
+                     f"📖 المنيو الكامل:\n{MENU_LINK}"
+                        )
+
+        send_message(sender, reply)
+        continue
 
 def send_message(user_id, text, quick_replies=None):
     url = f"https://graph.facebook.com/v12.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
@@ -204,3 +213,4 @@ def download_csv():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
