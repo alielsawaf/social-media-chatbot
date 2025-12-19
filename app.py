@@ -17,8 +17,18 @@ MENU_LINK = "https://heyzine.com/flip-book/31946f16d5.html"
 FUZZY_THRESHOLD = 70
 CSV_FILE = os.path.join(os.path.dirname(__file__), "failed_questions.csv")
 
-PRICE_WORDS = ['سعر','بكام','كام','عامل','تكلفه','ثمن','قيمة','سعره','الاسعار']
-GENERAL_TRIGGERS = ['منيو','المينيو','عايز المنيو','ابعت المنيو','بتبيعو ايه','ايه المنتجات','ايه اللي عندكم']
+PRICE_WORDS = [
+    'سعر','بكام','كام','عامل','تكلفه','ثمن','قيمة','سعره','الاسعار',
+    'كم','هل عندكم','عايز','من فضلك','لو سمحت','حابب','عايزه','اريد','من فضلك','استفسار','بخصوص','عندكو','بسال','عن','بقولك'
+]
+GENERAL_TRIGGERS = [
+    'منيو','المينيو','عايز المنيو','ابعت المنيو','بتبيعو ايه','ايه المنتجات',
+    'ايه اللي عندكم','لو سمحت','اريد','من فضلك'
+]
+GREETINGS = [
+    'اهلا','سلام','هاي','هلا','مرحبا','صباح الخير','مساء الخير',
+    'صباح الفل','مساء الفل','يا فندم','يا حضرة','يا أستاذ'
+]
 
 # ================== أدوات مساعدة ==================
 def normalize_numbers(text):
@@ -35,7 +45,7 @@ def clean_arabic_text(text):
 
 def clean_for_product(text):
     text = clean_arabic_text(text)
-    for w in PRICE_WORDS:
+    for w in PRICE_WORDS + ['بتبيعو','عندكو','ازاي','ممكن','بستفسر','بسال','عايز','اعرف','بكام']:
         text = text.replace(w, "")
     return text.strip()
 
@@ -147,15 +157,15 @@ def get_answer(user_text):
     # 3. FAQ
     for item in FAQ:
         for kw in item['keywords']:
-            if similarity(q_original, clean_arabic_text(kw)) >= FUZZY_THRESHOLD:
+            if kw in q_original or similarity(q_original, clean_arabic_text(kw)) >= FUZZY_THRESHOLD:
                 return {"text": item['answer'], "quick_replies": None}
 
     # 4. تحيات
-    if any(w in q_original for w in ['اهلا','سلام','هاي']):
+    if any(w in q_original for w in GREETINGS):
         return {"text": "أهلاً بحضرتك 👋", "quick_replies": None}
 
     log_failed(user_text)
-    return {"text": f"مش فاهم حضرتك قوي 😅\n📖 المنيو:\n{MENU_LINK}", "quick_replies": None}
+    return {"text": f"ممكن حضرتك توضحلي السؤال اكتر\n📖 المنيو:\n{MENU_LINK}", "quick_replies": None}
 
 # ================== Webhook ==================
 @app.route('/webhook', methods=['GET'])
