@@ -3,6 +3,7 @@ from fuzzywuzzy import fuzz
 import requests
 import re
 import os
+import sqlite3
 from datetime import datetime
 
 app = Flask(__name__)
@@ -14,12 +15,34 @@ WHATSAPP_NUMBER = "201090636076"
 MENU_LINK = "https://heyzine.com/flip-book/31946f16d5.html"
 
 FUZZY_THRESHOLD = 70
-FAILED_LOG = "failed_questions.log"
+DB_FILE = "bot_data.db"
 
 PRICE_WORDS = [
     'سعر', 'بكام', 'كام', 'عامل', 'تكلفه', 'ثمن',
     'قيمة', 'سعره', 'الاسعار'
 ]
+
+# ================== إنشاء قاعدة البيانات ==================
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS failed_questions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            question TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def log_failed(question):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO failed_questions (question, created_at) VALUES (?, ?)",
+                   (question, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    conn.commit()
+    conn.close()
 
 # ================== أدوات مساعدة ==================
 def normalize_numbers(text):
@@ -44,13 +67,9 @@ def clean_for_product(text):
 def similarity(a, b):
     return fuzz.token_set_ratio(a, b)
 
-def log_failed(question):
-    with open(FAILED_LOG, "a", encoding="utf-8") as f:
-        f.write(f"{datetime.now()} | {question}\n")
-
 # ================== المنتجات ==================
 PRODUCTS = [
-      # الرنجة
+    # الرنجة
     {'kw': ['رنجه مدخنه مبطرخه مرمله', 'رنجه مبطرخه', 'رنجه مرمله'], 'price': '250 EGP', 'w': '1 KG'},
     {'kw': ['رنجه مدخنه', 'رنجه عاديه'], 'price': '200 EGP', 'w': '1 KG'},
     {'kw': ['رنجه مدخنه 24 قيراط', 'رنجه 24', 'رنجه عيار 24'], 'price': '300 EGP', 'w': '1 KG'},
@@ -114,7 +133,7 @@ def get_answer(user_text):
     q_product = clean_for_product(user_text)
 
     # ---------- سعر بس ----------
-    if q_original in PRICE_WORDS or q_original.strip() == "سعر":
+    if any(w in q_original for w in PRICE_WORDS):
         return f"تفضل المنيو الكامل بالأسعار:\n{MENU_LINK}"
 
     # ---------- البحث عن المنتجات ----------
@@ -155,7 +174,6 @@ def get_answer(user_text):
 
     # ---------- فشل ----------
     log_failed(user_text)
-
     return (
         "معلش يا فندم، مش قادر أفهم طلبك بدقة.\n"
         f"📖 المنيو الكامل:\n{MENU_LINK}\n"
@@ -186,5 +204,5 @@ def send_message(user_id, text):
     requests.post(url, json=payload)
 
 if __name__ == "__main__":
+    init_db()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
