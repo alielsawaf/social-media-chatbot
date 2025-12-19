@@ -1,6 +1,6 @@
+pyodbc
 Flask
 gunicorn
 requests
 fuzzywuzzy
 python-Levenshtein
-pyodbc
