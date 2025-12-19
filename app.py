@@ -25,8 +25,7 @@ def normalize_numbers(text):
     return text.translate(str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789"))
 
 def clean_arabic_text(text):
-    if not text:
-        return ""
+    if not text: return ""
     text = normalize_numbers(text.lower().strip())
     text = re.sub(r"[إأآا]", "ا", text)
     text = re.sub(r"ة", "ه", text)
@@ -51,7 +50,7 @@ def log_failed(question):
             writer.writerow(["question", "created_at"])
         writer.writerow([question, datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
 
-# ================== المنتجات ==================
+# ================== المنتجات (نفس القائمة الخاصة بك) ==================
 PRODUCTS = [
     # الرنجة
     {'kw': ['رنجه مدخنه مبطرخه مرمله', 'رنجه مبطرخه', 'رنجه مرمله'], 'price': '250 EGP', 'w': '1 KG'},
@@ -94,7 +93,6 @@ PRODUCTS = [
     {'kw': ['حنشان مدخن', 'تعبان مدخن'], 'price': '810 EGP', 'w': '1 KG'}
 ]
 
-# ================== FAQ ==================
 FAQ = [
    {'keywords': ['دود', 'طفيليات', 'الرنجه فيها'], 'answer': "لا يا فندم، دي طفيليات مش دود. بتوجد في التجويف البطني ولا تصيب الإنسان، وبيتم القضاء عليها بالتجميد عند -40 درجة لضمان الأمان."},
    {'keywords': ['ساندوتشات', 'سلطات', 'وجبات'], 'answer': "منيو الساندوتشات والسلطات غير متاح حاليًا ولا يوجد توصيل لها."},
@@ -116,12 +114,12 @@ def get_answer(user_text):
     q_original = clean_arabic_text(user_text)
     q_product = clean_for_product(user_text)
 
-    # منيو
+    # 1. المنيو العام
     for g in GENERAL_TRIGGERS:
         if similarity(q_original, clean_arabic_text(g)) >= FUZZY_THRESHOLD:
-            return f"📖 المنيو الكامل:\n{MENU_LINK}"
+            return {"text": f"📖 المنيو الكامل:\n{MENU_LINK}", "quick_replies": None}
 
-    # منتجات
+    # 2. البحث عن المنتجات
     matches = []
     for p in PRODUCTS:
         for kw in p['kw']:
@@ -130,35 +128,34 @@ def get_answer(user_text):
                 break
 
     if len(matches) > 1:
-    quick_replies = []
-    for m in matches[:10]:
-        quick_replies.append({
-            "content_type": "text",
-            "title": m['kw'][0][:20],
-            "payload": f"PRODUCT_INDEX|{PRODUCTS.index(m)}"
-        })
+        quick_replies = []
+        for m in matches[:10]:
+            quick_replies.append({
+                "content_type": "text",
+                "title": m['kw'][0][:20],
+                "payload": f"PRODUCT_INDEX|{PRODUCTS.index(m)}"
+            })
+        return {
+            "text": "حضرتك تقصد أي منتج بالظبط؟",
+            "quick_replies": quick_replies
+        }
 
-    return {
-        "text": "حضرتك تقصد أي منتج بالظبط؟",
-        "quick_replies": quick_replies
-    }
-    #if len(matches) == 1:
-     #   p = matches[0]
-      #  return f"✔️ {p['kw'][0]}\n💰 {p['price']}\n⚖️ {p['w']}"
+    if len(matches) == 1:
+        p = matches[0]
+        return {"text": f"✔️ {p['kw'][0]}\n💰 {p['price']}\n⚖️ {p['w']}", "quick_replies": None}
 
-    # FAQ
+    # 3. FAQ
     for item in FAQ:
         for kw in item['keywords']:
             if similarity(q_original, clean_arabic_text(kw)) >= FUZZY_THRESHOLD:
-                return item['answer']
+                return {"text": item['answer'], "quick_replies": None}
 
-    # تحيات
+    # 4. تحيات
     if any(w in q_original for w in ['اهلا','سلام','هاي']):
-        return "أهلاً بحضرتك 👋"
+        return {"text": "أهلاً بحضرتك 👋", "quick_replies": None}
 
-    # فشل
     log_failed(user_text)
-    return f"مش فاهم حضرتك قوي 😅\n📖 المنيو:\n{MENU_LINK}"
+    return {"text": f"مش فاهم حضرتك قوي 😅\n📖 المنيو:\n{MENU_LINK}", "quick_replies": None}
 
 # ================== Webhook ==================
 @app.route('/webhook', methods=['GET'])
@@ -170,39 +167,41 @@ def verify():
 @app.route('/webhook', methods=['POST'])
 def webhook():
     data = request.get_json()
-    for entry in data.get("entry", []):
-        for msg in entry.get("messaging", []):
-            if "message" in msg:
-                sender = msg["sender"]["id"]
-                text = msg["message"].get("text", "")
-
-                if "quick_reply" in msg["message"]:
-                    payload = msg["message"]["quick_reply"]["payload"]
+    if data.get("object") == "page":
+        for entry in data.get("entry", []):
+            for msg_event in entry.get("messaging", []):
+                sender = msg_event["sender"]["id"]
+                
+                # التعامل مع أزرار الاختيار (Quick Replies)
+                if "message" in msg_event and "quick_reply" in msg_event["message"]:
+                    payload = msg_event["message"]["quick_reply"]["payload"]
                     if payload.startswith("PRODUCT_INDEX|"):
-                    index = int(payload.split("|")[1])
-                    p = PRODUCTS[index]
-
-                    reply = (
-                    f"✔️ المنتج متوفر\n"
-                    f"📌 {p['kw'][0]}\n"
-                    f"💰 السعر: {p['price']}\n"
-                    f"⚖️ الوزن: {p['w']}\n\n"
-                     f"📖 المنيو الكامل:\n{MENU_LINK}"
-                        )
-
-        send_message(sender, reply)
-        continue
+                        idx = int(payload.split("|")[1])
+                        p = PRODUCTS[idx]
+                        reply_text = f"✔️ المنتج متوفر\n📌 {p['kw'][0]}\n💰 السعر: {p['price']}\n⚖️ الوزن: {p['w']}"
+                        send_message(sender, reply_text)
+                
+                # التعامل مع الرسائل النصية
+                elif "message" in msg_event and "text" in msg_event["message"]:
+                    user_text = msg_event["message"]["text"]
+                    result = get_answer(user_text)
+                    send_message(sender, result["text"], result["quick_replies"])
+                    
+    return "ok", 200
 
 def send_message(user_id, text, quick_replies=None):
     url = f"https://graph.facebook.com/v12.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
-    message = {"text": text}
+    payload = {
+        "recipient": {"id": user_id},
+        "message": {"text": text}
+    }
     if quick_replies:
-        message["quick_replies"] = quick_replies
-    requests.post(url, json={"recipient":{"id":user_id},"message":message})
+        payload["message"]["quick_replies"] = quick_replies
+    
+    requests.post(url, json=payload)
 
 # ================== تحميل CSV ==================
 CSV_PASSWORD = "123321"
-
 @app.route('/download_csv')
 def download_csv():
     if request.args.get("password") != CSV_PASSWORD:
@@ -213,5 +212,3 @@ def download_csv():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
-
