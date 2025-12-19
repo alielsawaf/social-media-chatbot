@@ -1,0 +1,5 @@
+[phases.setup]
+nixPkgs = ["python3", "unixODBC", "unixODBCDrivers.msodbcsql17", "gcc"]
+
+[phases.build]
+cmds = ["pip install -r requirements.txt"]
