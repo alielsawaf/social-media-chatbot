@@ -14,12 +14,13 @@ WHATSAPP_NUMBER = "201090636076"
 MENU_LINK = "https://heyzine.com/flip-book/31946f16d5.html"
 
 def clean_arabic_text(text):
-   if not text: return ""
-    # 1. تحويل الأرقام العربية إلى إنجليزية
+  if not text:
+        return ""
+    # تحويل الأرقام العربية إلى إنجليزية
     arabic_numbers = '٠١٢٣٤٥٦٧٨٩'
     english_numbers = '0123456789'
-    translation_table = str.maketrans(arabic_numbers, english_numbers)
-    text = text.translate(translation_table)
+    trans = str.maketrans(arabic_numbers, english_numbers)
+    text = text.translate(trans)
     # 2. تنظيف النص وتوحيد الحروف
     text = text.strip().lower()
     text = re.sub(r"[إأآا]", "ا", text)
@@ -146,5 +147,6 @@ def send_message(recipient_id, message_text):
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
+
 
 
