@@ -3,8 +3,8 @@ from fuzzywuzzy import fuzz
 import requests
 import re
 import os
-import sqlite3
 from datetime import datetime
+import csv
 
 app = Flask(__name__)
 
@@ -15,34 +15,12 @@ WHATSAPP_NUMBER = "201090636076"
 MENU_LINK = "https://heyzine.com/flip-book/31946f16d5.html"
 
 FUZZY_THRESHOLD = 70
-DB_FILE = "bot_data.db"
+CSV_FILE = os.path.join(os.path.dirname(__file__), "failed_questions.csv")
 
 PRICE_WORDS = [
     'سعر', 'بكام', 'كام', 'عامل', 'تكلفه', 'ثمن',
     'قيمة', 'سعره', 'الاسعار'
 ]
-
-# ================== إنشاء قاعدة البيانات ==================
-def init_db():
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS failed_questions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            question TEXT NOT NULL,
-            created_at TEXT NOT NULL
-        )
-    """)
-    conn.commit()
-    conn.close()
-
-def log_failed(question):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO failed_questions (question, created_at) VALUES (?, ?)",
-                   (question, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-    conn.commit()
-    conn.close()
 
 # ================== أدوات مساعدة ==================
 def normalize_numbers(text):
@@ -66,6 +44,15 @@ def clean_for_product(text):
 
 def similarity(a, b):
     return fuzz.token_set_ratio(a, b)
+
+def log_failed(question):
+    """سجل السؤال اللي البوت مش فاهمه في CSV"""
+    file_exists = os.path.isfile(CSV_FILE)
+    with open(CSV_FILE, "a", newline="", encoding="utf-8") as csvfile:
+        writer = csv.writer(csvfile)
+        if not file_exists:
+            writer.writerow(["question", "created_at"])  # header
+        writer.writerow([question, datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
 
 # ================== المنتجات ==================
 PRODUCTS = [
@@ -204,5 +191,4 @@ def send_message(user_id, text):
     requests.post(url, json=payload)
 
 if __name__ == "__main__":
-    init_db()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
