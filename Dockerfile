@@ -1,7 +1,7 @@
 # استخدام نسخة بايثون رسمية
 FROM python:3.9-slim
 
-# تثبيت أدوات النظام والدرايفر الخاص بـ SQL Server
+# تثبيت الحزم الأساسية ودرايفر ميكروسوفت
 RUN apt-get update && apt-get install -y \
     curl \
     gnupg \
@@ -14,12 +14,12 @@ RUN apt-get update && apt-get install -y \
     && ACCEPT_EULA=Y apt-get install -y msodbcsql17 \
     && apt-get clean
 
-# تجهيز ملفات المشروع
+# ضبط مجلد العمل
 WORKDIR /app
 COPY . .
 
-# تثبيت مكتبات بايثون
+# تثبيت المكتبات
 RUN pip install --no-cache-dir -r requirements.txt
 
-# تشغيل التطبيق باستخدام gunicorn
+# تشغيل البوت باستخدام gunicorn
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
