@@ -120,7 +120,7 @@ def get_answer(user_text):
 
     # 2. البحث عن المنيو
     if any(w in q_clean for w in ['منيو', 'كتالوج', 'الاصناف']):
-        return {"text": f"تفضل المنيو الكامل بالأسعار من هنا:\n{MENU_LINK}", "quick_replies": None}
+        return {"text": f"اتفضل يا فندم المنيو الكامل بالأسعار :\n{MENU_LINK}", "quick_replies": None}
 
     # 3. البحث عن المنتجات (القلب الذكي)
     matches = []
@@ -152,7 +152,7 @@ def get_answer(user_text):
                 return {"text": item['answer'], "quick_replies": None}
 
     log_failed(user_text)
-    return {"text": f"ده لينك المينيو ممكن يساعدك ، ممكن توضح السؤال أكتر يا فندم:\n{MENU_LINK}"\nللتحدث لاحد ممثلي خدمة العملاء واتساب: {WHATSAPP_NUMBER}, "quick_replies": None}
+    return {"text": f"ده لينك المينيو ممكن يساعدك ، ممكن توضح السؤال أكتر يا فندم:\n{MENU_LINK}\nللتحدث لاحد ممثلي خدمة العملاء واتساب : {WHATSAPP_NUMBER}", "quick_replies": None}
 
 # ================== Webhook ==================
 @app.route('/webhook', methods=['GET'])
@@ -194,3 +194,4 @@ def download_csv():
     return send_file(CSV_FILE, as_attachment=True)
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
