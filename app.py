@@ -142,9 +142,9 @@ def get_answer(user_text):
         "text": "حضرتك تقصد أي منتج بالظبط؟",
         "quick_replies": quick_replies
     }
-    if len(matches) == 1:
-        p = matches[0]
-        return f"✔️ {p['kw'][0]}\n💰 {p['price']}\n⚖️ {p['w']}"
+    #if len(matches) == 1:
+     #   p = matches[0]
+      #  return f"✔️ {p['kw'][0]}\n💰 {p['price']}\n⚖️ {p['w']}"
 
     # FAQ
     for item in FAQ:
@@ -213,4 +213,5 @@ def download_csv():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
