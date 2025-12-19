@@ -1,19 +1,25 @@
-# استخدم صورة Python 3.10 كنظام أساسي
-FROM python:3.10-slim
+# استخدام نسخة بايثون رسمية
+FROM python:3.9-slim
 
-# تعيين دليل العمل داخل الحاوية
+# تثبيت أدوات النظام والدرايفر الخاص بـ SQL Server
+RUN apt-get update && apt-get install -y \
+    curl \
+    gnupg \
+    gcc \
+    g++ \
+    unixodbc-dev \
+    && curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
+    && curl https://packages.microsoft.com/config/debian/10/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y msodbcsql17 \
+    && apt-get clean
+
+# تجهيز ملفات المشروع
 WORKDIR /app
+COPY . .
 
-# نسخ ملف متطلبات المشروع وتثبيته
-COPY requirements.txt .
+# تثبيت مكتبات بايثون
 RUN pip install --no-cache-dir -r requirements.txt
 
-# نسخ ملف التطبيق app.py إلى الحاوية
-COPY app.py .
-
-# تحديد المنفذ (8080) كإجراء إعلامي
-EXPOSE 8080
-
-# أمر التشغيل النهائي (الصيغة الصحيحة التي تعالج $PORT):
-# نستخدم الصيغة السطرية بدلاً من مصفوفة JSON لضمان قراءة المتغير.
-CMD gunicorn app:app --bind 0.0.0.0:$PORT
+# تشغيل التطبيق باستخدام gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
