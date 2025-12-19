@@ -29,7 +29,7 @@ SQL_USER = "bot_user"
 SQL_PASS = "Aa#123456789#"
 
 conn_str = (
-    f"DRIVER={{ODBC Driver 18 for SQL Server}};"
+    f"DRIVER={{ODBC Driver 17 for SQL Server}};"
     f"SERVER={SQL_SERVER};"
     f"DATABASE={SQL_DB};"
     f"UID={SQL_USER};"
@@ -172,3 +172,4 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
