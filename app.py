@@ -3,56 +3,34 @@ from fuzzywuzzy import fuzz
 import requests
 import re
 import os
-from datetime import datetime
-import csv
 
 app = Flask(__name__)
 
-# ================== الإعدادات ==================
+# ================== 1: الإعدادات الأساسية ==================
 PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD"
 VERIFY_TOKEN = "my_secret_token"
 WHATSAPP_NUMBER = "201090636076"
 MENU_LINK = "https://heyzine.com/flip-book/31946f16d5.html"
-FUZZY_THRESHOLD = 70
-CSV_FILE = os.path.join(os.path.dirname(__file__), "failed_questions.csv")
 
-# كلمات مساعدة لزيادة دقة الفهم
-PRICE_WORDS = ['سعر','بكام','كام','عامل','تكلفه','ثمن','قيمة','سعره','الاسعار','بقد ايه']
-GREETINGS = ['اهلا','سلام','هاي','هلا','مرحبا','صباح','مساء','ازيك','يا فندم','يا استاذ']
+GREETINGS = ['اهلا','سلام','هاي','هلا','مرحبا','صباح','مساء','ازيك','يا فندم','نورتونا']
 
-# ================== أدوات مساعدة ==================
-def normalize_numbers(text):
-    return text.translate(str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789"))
-
+# ================== 2: الأدوات المساعدة ==================
 def clean_arabic_text(text):
     if not text: return ""
-    text = normalize_numbers(text.lower().strip())
+    text = text.lower().strip()
     text = re.sub(r"[إأآا]", "ا", text)
     text = re.sub(r"ة", "ه", text)
     text = re.sub(r"ى", "ي", text)
     text = re.sub(r"[^\w\s]", "", text)
     return re.sub(r"\s+", " ", text)
 
-def smart_match(user_text, target_text):
-    """دمج أكثر من نوع للفوزي لزيادة الفهم"""
-    # 1. تطابق المجموعات (بيفهم لو الكلمات متلخبطة)
-    score1 = fuzz.token_set_ratio(user_text, target_text)
-    # 2. تطابق جزئي (لو اسم المنتج وسط جملة طويلة)
-    score2 = fuzz.partial_ratio(user_text, target_text)
-    return max(score1, score2)
+def smart_similarity(user_text, target_text):
+    s1 = fuzz.token_set_ratio(user_text, target_text)
+    s2 = fuzz.partial_ratio(user_text, target_text)
+    return max(s1, s2)
 
-def log_failed(question):
-    file_exists = os.path.isfile(CSV_FILE)
-    with open(CSV_FILE, "a", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(["question", "created_at"])
-        writer.writerow([question, datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
-
-# ================== المنتجات والأسئلة (نفس بياناتك) ==================
-# ... (ضع قائمة PRODUCTS و FAQ الخاصة بك هنا كما هي في نسختك المستقرة) ...
+# ================== 3: قائمة المنتجات (أسعار) ==================
 PRODUCTS = [
-      # الرنجة
     {'kw': ['رنجه مدخنه مبطرخه مرمله', 'رنجه مبطرخه', 'رنجه مرمله'], 'price': '250 EGP', 'w': '1 KG'},
     {'kw': ['رنجه مدخنه', 'رنجه عاديه'], 'price': '200 EGP', 'w': '1 KG'},
     {'kw': ['رنجه مدخنه 24 قيراط', 'رنجه 24', 'رنجه عيار 24'], 'price': '300 EGP', 'w': '1 KG'},
@@ -90,15 +68,15 @@ PRODUCTS = [
     # أخرى
     {'kw': ['انشوجه فيليه زيت', 'انشوجه'], 'price': '110 EGP', 'w': '125 G'},
     {'kw': ['سردين مملح'], 'price': '200 EGP', 'w': '250 G'},
-    {'kw': ['حنشان مدخن', 'تعبان مدخن'], 'price': '810 EGP', 'w': '1 KG'}
-]
+    {'kw': ['حنشان مدخن', 'تعبان مدخن'], 'price': '810 EGP', 'w': '1 KG'}]
 
+# ================== 4: الأسئلة الشائعة (الرد على الاستفسارات) ==================
 FAQ = [
     # ------------------ 2: الطفيليات/الدود ------------------
     {
         'keywords': ['دود', 'طفيليات', 'حاجة غريبة', 'مدودة', 'بايظة'],
         'answer': (
-            "أهلا بحضرتك يا فندم، اللي ظهر في السمكة دي مش دود، دي بتكون طفيليات توجد في التجويف البطني للرنجة. "
+            "مساء الخير يا فندم، اللي ظهر في السمكة دي مش دود، دي بتكون طفيليات توجد في التجويف البطني للرنجة. "
             "وهي لا تصيب الإنسان تماماً، وزيادة في الوقاية، بنجمد الأسماك عند درجة -40 تحت الصفر لضمان الأمان التام "
             "وتصبح جزءاً من الأمعاء ولا تؤثر على الصحة."
         )
@@ -197,57 +175,55 @@ FAQ = [
         'answer': "عندنا نوعين بطارخ: ناشفة (مرملة/خرز) وطريقة (نشو). ومتاح منها مهروسة في زيت أو برطمانات عسل وبرتقال."
     }
 ]
-
-# ================== منطق الرد (المحسن) ==================
+# ================== 5: منطق الرد (القلب النابض) ==================
 def get_answer(user_text):
     q_clean = clean_arabic_text(user_text)
-    
-    # 1. أولاً: فحص السلام والترحيب
-    if any(w in q_clean for w in GREETINGS):
-        if len(q_clean.split()) < 3:
-            return {"text": f"أهلاً بك في رنجة أبو السيد 👋 نورتنا.. للطلبات واتساب: {WHATSAPP_NUMBER}\nحابب تعرف سعر صنف معين ولا عندك استفسار؟", "quick_replies": None}
 
-    # 2. ثانياً: فحص الـ FAQ (الأسئلة الشائعة) - عطيناها أولوية
-    # لو العميل بيسأل عن (توصيل، دود، فاكيوم، جملة.. إلخ) هيرد من هنا الأول
+    # أ- فحص الـ FAQ أولاً (أولوية للاستفسار)
     for item in FAQ:
         for kw in item['keywords']:
-            if smart_similarity(q_clean, clean_arabic_text(kw)) >= 85: # دقة عالية للـ FAQ
-                return {"text": item['answer'], "quick_replies": None}
+            if smart_similarity(q_clean, clean_arabic_text(kw)) >= 85:
+                return {"text": f"✨ {item['answer']}", "quick_replies": None}
 
-    # 3. ثالثاً: فحص طلبات "السعر" (لو الجملة فيها كلمة سعر أو بكام أو جنيه)
-    PRICE_KEYWORDS = ['سعر', 'بكام', 'جنيه', 'بقد ايه', 'القيمة', 'كام']
-    is_price_query = any(p_kw in q_clean for p_kw in PRICE_KEYWORDS)
+    # ب- فحص السلام
+    if any(w in q_clean for w in GREETINGS):
+        if len(q_clean.split()) < 3:
+            return {"text": f"أهلاً بك في رنجة أبو السيد 👋\nللطلبات واتساب: {WHATSAPP_NUMBER}\nحابب تعرف سعر صنف معين؟", "quick_replies": None}
 
-    # 4. رابعاً: البحث في المنتجات
+    # ج- البحث عن المنتجات (السعر)
     matches = []
+    # لو الجملة فيها "سعر" أو "بكام" بنقلل القيود عشان نلاقي المنتج
+    is_price_req = any(x in q_clean for x in ['سعر', 'بكام', 'جنيه', 'بقد ايه'])
+    
     for p in PRODUCTS:
         for kw in p['kw']:
             score = smart_similarity(q_clean, clean_arabic_text(kw))
-            # لو سائل عن السعر صراحة بنقلل القيود، لو كلام عادي بنعلي القيود
-            threshold = 70 if is_price_query else 90 
+            threshold = 75 if is_price_req else 92
             if score >= threshold:
                 matches.append(p)
                 break
 
     if len(matches) > 1:
         qr = [{"content_type": "text", "title": m['kw'][0][:20], "payload": f"PRODUCT_INDEX|{PRODUCTS.index(m)}"} for m in matches[:10]]
-        return {"text": "حضرتك تقصد أي نوع بالظبط؟ (اختر من القائمة)", "quick_replies": qr}
+        return {"text": "🛎️ حضرتك تقصد أي نوع بالظبط؟", "quick_replies": qr}
 
     if len(matches) == 1:
         p = matches[0]
         return {"text": f"📌 {p['kw'][0]}\n💰 السعر: {p['price']}\n⚖️ الوزن: {p['w']}", "quick_replies": None}
 
-    # 5. خامساً: لو مفيش رد خالص (رد افتراضي ذكي)
+    # د- الرد الافتراضي الشيك
     return {
         "text": (
-            f" ممكن توضح السؤال أكتر يافندم. "
-            # f"🔹 للطلبات والتوصيل: {WHATSAPP_NUMBER}\n"
-            # f"🔹 لمشاهدة المنيو الكامل: {MENU_LINK}\n"
-            # f"أو اسألني عن (أسعار الرنجة، الفسيخ، التونة، أو مواعيد الفروع)."
+            "نعتذر منك، لم أفهم استفسارك بدقة. ✨\n\n"
+            "يمكنك دائماً:\n"
+            f"📱 التواصل واتساب للطلبات: {WHATSAPP_NUMBER}\n"
+            f"📄 تصفح المنيو والأسعار: {MENU_LINK}\n\n"
+            "أو اسألني عن (مواعيد الفروع، التوصيل، أو السعر)."
         ),
         "quick_replies": None
     }
-# ================== Webhook ==================
+
+# ================== 6: الـ Webhook الفني ==================
 @app.route('/webhook', methods=['GET'])
 def verify():
     if request.args.get("hub.verify_token") == VERIFY_TOKEN:
@@ -263,9 +239,14 @@ def webhook():
                 sender = msg_event["sender"]["id"]
                 if "message" in msg_event:
                     msg = msg_event["message"]
+                    # معالجة الزراير (الرد السريع)
                     if "quick_reply" in msg:
-                        p = PRODUCTS[int(msg["quick_reply"]["payload"].split("|")[1])]
-                        send_message(sender, f"📌 {p['kw'][0]}\n💰 السعر: {p['price']}\n⚖️ الوزن: {p['w']}")
+                        payload = msg["quick_reply"]["payload"]
+                        if "PRODUCT_INDEX" in payload:
+                            idx = int(payload.split("|")[1])
+                            p = PRODUCTS[idx]
+                            send_message(sender, f"📌 {p['kw'][0]}\n💰 السعر: {p['price']}\n⚖️ الوزن: {p['w']}")
+                    # معالجة النص العادي
                     elif "text" in msg:
                         res = get_answer(msg["text"])
                         send_message(sender, res["text"], res.get("quick_replies"))
@@ -274,19 +255,9 @@ def webhook():
 def send_message(user_id, text, quick_replies=None):
     url = f"https://graph.facebook.com/v12.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
     payload = {"recipient": {"id": user_id}, "message": {"text": text}}
-    if quick_replies: payload["message"]["quick_replies"] = quick_replies
+    if quick_replies:
+        payload["message"]["quick_replies"] = quick_replies
     requests.post(url, json=payload)
-# ================== تحميل CSV ==================
-CSV_PASSWORD = "123321"
-@app.route('/download_csv')
-def download_csv():
-    if request.args.get("password") != CSV_PASSWORD:
-        return abort(403)
-    if not os.path.isfile(CSV_FILE):
-        return "لا يوجد ملف بعد"
-    return send_file(CSV_FILE, as_attachment=True)
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
-
-
