@@ -98,7 +98,7 @@ FAQ = [
     {
         'keywords': ['دود', 'طفيليات', 'حاجة غريبة', 'مدودة', 'بايظة'],
         'answer': (
-            "مساء الخير يا فندم، اللي ظهر في السمكة دي مش دود، دي بتكون طفيليات توجد في التجويف البطني للرنجة. "
+            "أهلا بحضرتك يا فندم، اللي ظهر في السمكة دي مش دود، دي بتكون طفيليات توجد في التجويف البطني للرنجة. "
             "وهي لا تصيب الإنسان تماماً، وزيادة في الوقاية، بنجمد الأسماك عند درجة -40 تحت الصفر لضمان الأمان التام "
             "وتصبح جزءاً من الأمعاء ولا تؤثر على الصحة."
         )
@@ -201,48 +201,52 @@ FAQ = [
 # ================== منطق الرد (المحسن) ==================
 def get_answer(user_text):
     q_clean = clean_arabic_text(user_text)
-
-    # 1. الرد على السلام (أولوية قصوى)
+    
+    # 1. أولاً: فحص السلام والترحيب
     if any(w in q_clean for w in GREETINGS):
-        if len(q_clean.split()) < 4: # لو هي تحية بس
-            return {"text": "أهلاً بحضرتك 👋 نورت أبو السيد، تحت أمرك.. حابب تستفسر عن إيه؟", "quick_replies": None}
+        if len(q_clean.split()) < 3:
+            return {"text": f"أهلاً بك في رنجة أبو السيد 👋 نورتنا.. للطلبات واتساب: {WHATSAPP_NUMBER}\nحابب تعرف سعر صنف معين ولا عندك استفسار؟", "quick_replies": None}
 
-    # 2. البحث عن المنيو
-    if any(w in q_clean for w in ['منيو', 'كتالوج', 'الاصناف']):
-        return {"text": f"اتفضل يا فندم المنيو الكامل بالأسعار :\n{MENU_LINK}", "quick_replies": None}
+    # 2. ثانياً: فحص الـ FAQ (الأسئلة الشائعة) - عطيناها أولوية
+    # لو العميل بيسأل عن (توصيل، دود، فاكيوم، جملة.. إلخ) هيرد من هنا الأول
+    for item in FAQ:
+        for kw in item['keywords']:
+            if smart_similarity(q_clean, clean_arabic_text(kw)) >= 85: # دقة عالية للـ FAQ
+                return {"text": item['answer'], "quick_replies": None}
 
-    # 3. البحث عن المنتجات (القلب الذكي)
+    # 3. ثالثاً: فحص طلبات "السعر" (لو الجملة فيها كلمة سعر أو بكام أو جنيه)
+    PRICE_KEYWORDS = ['سعر', 'بكام', 'جنيه', 'بقد ايه', 'القيمة', 'كام']
+    is_price_query = any(p_kw in q_clean for p_kw in PRICE_KEYWORDS)
+
+    # 4. رابعاً: البحث في المنتجات
     matches = []
     for p in PRODUCTS:
         for kw in p['kw']:
-            score = smart_match(q_clean, clean_arabic_text(kw))
-            if score >= FUZZY_THRESHOLD:
+            score = smart_similarity(q_clean, clean_arabic_text(kw))
+            # لو سائل عن السعر صراحة بنقلل القيود، لو كلام عادي بنعلي القيود
+            threshold = 70 if is_price_query else 90 
+            if score >= threshold:
                 matches.append(p)
                 break
 
     if len(matches) > 1:
-        quick_replies = []
-        for m in matches[:10]:
-            quick_replies.append({
-                "content_type": "text",
-                "title": m['kw'][0][:20],
-                "payload": f"PRODUCT_INDEX|{PRODUCTS.index(m)}"
-            })
-        return {"text": "حضرتك تقصد أي منتج بالظبط؟", "quick_replies": quick_replies}
+        qr = [{"content_type": "text", "title": m['kw'][0][:20], "payload": f"PRODUCT_INDEX|{PRODUCTS.index(m)}"} for m in matches[:10]]
+        return {"text": "حضرتك تقصد أي نوع بالظبط؟ (اختر من القائمة)", "quick_replies": qr}
 
     if len(matches) == 1:
         p = matches[0]
-        return {"text": f"✔️ {p['kw'][0]}\n💰 {p['price']}\n⚖️ {p['w']}", "quick_replies": None}
+        return {"text": f"📌 {p['kw'][0]}\n💰 السعر: {p['price']}\n⚖️ الوزن: {p['w']}", "quick_replies": None}
 
-    # 4. الـ FAQ
-    for item in FAQ:
-        for kw in item['keywords']:
-            if smart_match(q_clean, clean_arabic_text(kw)) >= 80:
-                return {"text": item['answer'], "quick_replies": None}
-
-    log_failed(user_text)
-    return {"text": f"ده لينك المينيو ممكن يساعدك ، ممكن توضح السؤال أكتر يا فندم:\n{MENU_LINK}\nللتحدث لاحد ممثلي خدمة العملاء واتساب : {WHATSAPP_NUMBER}", "quick_replies": None}
-
+    # 5. خامساً: لو مفيش رد خالص (رد افتراضي ذكي)
+    return {
+        "text": (
+            f" ممكن توضح السؤال أكتر يافندم. "
+            # f"🔹 للطلبات والتوصيل: {WHATSAPP_NUMBER}\n"
+            # f"🔹 لمشاهدة المنيو الكامل: {MENU_LINK}\n"
+            # f"أو اسألني عن (أسعار الرنجة، الفسيخ، التونة، أو مواعيد الفروع)."
+        ),
+        "quick_replies": None
+    }
 # ================== Webhook ==================
 @app.route('/webhook', methods=['GET'])
 def verify():
@@ -283,5 +287,6 @@ def download_csv():
     return send_file(CSV_FILE, as_attachment=True)
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
