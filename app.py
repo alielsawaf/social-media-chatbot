@@ -7,7 +7,7 @@ import os
 app = Flask(__name__)
 
 # ================== الإعدادات ==================
-PAGE_ACCESS_TOKEN = "PUT_YOUR_TOKEN"
+PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD"
 VERIFY_TOKEN = "my_secret_token"
 WHATSAPP_NUMBER = "201090636076"
 MENU_LINK = "https://heyzine.com/flip-book/31946f16d5.html"
@@ -149,3 +149,4 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
