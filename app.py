@@ -2,11 +2,18 @@ from flask import Flask, request
 from fuzzywuzzy import fuzz
 import requests
 import re
+import os
 
 app = Flask(__name__)
 
-# الذاكرة وقائمة المنتجات (كما هي في كودك)
+# ================== CONFIG ==================
+PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD"
+VERIFY_TOKEN = "my_secret_token"
+
+# ================== MEMORY ==================
 USER_CONTEXT = {} 
+
+# ================== PRODUCTS ==================
 PRODUCTS = [
     # الرنجة
     {'kw': ['رنجه مدخنه مبطرخه مرمله', 'رنجه مبطرخه', 'رنجه مرمله'], 'price': '250 EGP', 'w': '1 KG'},
@@ -126,58 +133,91 @@ FAQ = [
     }
 ]
 
-
+# ================== UTILS ==================
 def clean(text):
     if not text: return ""
     text = text.lower().strip()
-    # تحويل الأرقام
+    # تحويل الأرقام العربية لإنجليزي
     text = text.translate(str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789"))
-    # حذف الحشو
-    stop_words = ['عايز', 'اعرف', 'لو سمحت', 'عندكم', 'عندكو', 'ممكن', 'يا فندم', 'حضرتك', 'بكام']
-    for word in stop_words: text = text.replace(word, "")
-    # توحيد الحروف
+    # كلمات الحشو التي يتم تجاهلها (لا تضع "سعر" أو "بكام" هنا)
+    stop_words = ['عايز', 'عايزه', 'اعرف', 'استفسر', 'لو سمحت', 'عندكم', 'عندكو', 'ممكن', 'يا فندم', 'حضرتك']
+    for word in stop_words:
+        text = text.replace(word, "")
+    # توحيد الحروف وفصل الأرقام
     text = re.sub(r"(\d+)", r" \1 ", text)
     text = re.sub(r"[إأآا]", "ا", text); text = re.sub(r"ة", "ه", text); text = re.sub(r"ى", "ي", text)
     return re.sub(r"[^\w\s]", "", text).strip()
 
 def detect_product(text):
     q = clean(text)
+    if not q: return None
     for p in PRODUCTS:
         for k in p["kw"]:
-            # استخدام ratio عالي للأخطاء الإملائية
-            if fuzz.partial_ratio(q, clean(k)) > 80 or clean(k) in q:
+            target = clean(k)
+            # فحص التشابه الجزئي أو وجود الكلمة
+            if fuzz.partial_ratio(q, target) > 85 or target in q:
                 return p
     return None
 
+# ================== LOGIC ==================
 def get_answer(user_id, text):
     raw_q = text.lower()
     q_cleaned = clean(text)
     
-    # 1. فحص السلام (شامل)
-    if any(w in raw_q for w in ['اهلا', 'سلام', 'صباح', 'مساء', 'ازيك']):
-        return "أهلاً بك في رنجة أبو السيد 👋 حابب تعرف أسعارنا إيه النهاردة؟"
+    # 1. الترحيب
+    if any(w in raw_q for w in ['اهلا', 'سلام', 'صباح', 'مساء', 'ازيك', 'هاي']):
+        return "أهلاً بك في رنجة أبو السيد 👋 نورتنا.. حابب تعرف أسعارنا النهاردة ولا عندك استفسار؟ ✨"
 
-    # 2. تحديد المنتج (تحديث الذاكرة)
+    # 2. البحث عن منتج وتحديث الذاكرة
     product = detect_product(text)
-    if product: USER_CONTEXT[user_id] = product
+    if product:
+        USER_CONTEXT[user_id] = product
 
-    # 3. هل السؤال عن سعر؟
-    if any(x in raw_q for x in ["سعر", "بكام", "كام", "قد ايه", "جنيه", "بكم"]):
+    # 3. السؤال عن السعر
+    if any(x in raw_q for x in ["سعر", "بكام", "كام", "بقد ايه", "جنيه", "بكم"]):
         p = product or USER_CONTEXT.get(user_id)
         if p:
             return f"💰 سعر {p['kw'][0]}:\nالوزن: {p['w']}\nالسعر: {p['price']} ✨"
         return "تحب تعرف سعر أنهي صنف؟ 😊"
 
-    # 4. الـ FAQ
+    # 4. الاستفسارات العامة (FAQ)
     for f in FAQ:
         for kw in f["keywords"]:
             if fuzz.partial_ratio(q_cleaned, clean(kw)) > 85:
                 return f["answer"]
 
-    # 5. رد ذكي لو لقى صنف بس ملقاش سؤال
+    # 5. إذا ذكر المنتج فقط بدون سؤال
     if product:
-        return f"📌 {product['kw'][0]} متاح يا فندم. تحب تعرف سعره؟"
+        return f"📌 {product['kw'][0]} متاح يا فندم. تحب تعرف السعر أو الوزن؟"
 
-    return "نعتذر منك، لم أفهم استفسارك. يمكنك السؤال عن الأسعار أو التوصيل 🛎️"
+    return "نعتذر منك، لم أفهم استفسارك بدقة. يمكنك السؤال عن (الأسعار، التوصيل، أو مواعيد الفروع) ✨"
 
-# (باقي كود الـ Webhook و send_message كما هو)
+# ================== WEBHOOK ==================
+@app.route("/webhook", methods=["GET"])
+def verify():
+    if request.args.get("hub.verify_token") == VERIFY_TOKEN:
+        return request.args.get("hub.challenge")
+    return "failed", 403
+
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    data = request.get_json()
+    if data.get("object") == "page":
+        for entry in data.get("entry", []):
+            for ev in entry.get("messaging", []):
+                sender = ev["sender"]["id"]
+                if "message" in ev and "text" in ev["message"]:
+                    reply = get_answer(sender, ev["message"]["text"])
+                    send_message(sender, reply)
+    return "ok", 200
+
+def send_message(user_id, text):
+    url = f"https://graph.facebook.com/v12.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
+    payload = {"recipient": {"id": user_id}, "message": {"text": text}}
+    try:
+        requests.post(url, json=payload)
+    except:
+        pass
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
