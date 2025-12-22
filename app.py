@@ -6,15 +6,14 @@ import os
 
 app = Flask(__name__)
 
-# ================== الإعدادات ==================
+# ================== CONFIG ==================
 PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD"
 VERIFY_TOKEN = "my_secret_token"
-WHATSAPP_NUMBER = "01090636076"
 
-# ================== ذاكرة مؤقتة ==================
+# ================== MEMORY ==================
 USER_CONTEXT = {}  # user_id -> product
 
-# ================== أدوات النص ==================
+# ================== TEXT UTILS ==================
 def clean(text):
     if not text:
         return ""
@@ -26,21 +25,17 @@ def clean(text):
     return re.sub(r"\s+", " ", text)
 
 def sim(a, b):
-    return max(
-        fuzz.token_set_ratio(a, b),
-        fuzz.partial_ratio(a, b)
-    )
+    return max(fuzz.token_set_ratio(a, b), fuzz.partial_ratio(a, b))
 
-# ================== السلام ==================
+# ================== GREETINGS ==================
 GREETINGS = {
     "صباح": "صباح النور يا فندم 🌞",
     "مساء": "مساء الخير يا فندم 🌙",
     "السلام": "وعليكم السلام ورحمة الله 🤍",
-    "اهلا": "أهلاً وسهلاً بحضرتك 🌹",
-    "هاي": "أهلاً بيك 👋",
+    "اهلا": "أهلاً بحضرتك 🌹",
 }
 
-# ================== المنتجات ==================
+# ================== PRODUCTS ==================
 PRODUCTS = [
      # الرنجة
     {'kw': ['رنجه مدخنه مبطرخه مرمله', 'رنجه مبطرخه', 'رنجه مرمله'], 'price': '250 EGP', 'w': '1 KG'},
@@ -80,11 +75,12 @@ PRODUCTS = [
     # أخرى
     {'kw': ['انشوجه فيليه زيت', 'انشوجه'], 'price': '110 EGP', 'w': '125 G'},
     {'kw': ['سردين مملح'], 'price': '200 EGP', 'w': '250 G'},
-    {'kw': ['حنشان مدخن', 'تعبان مدخن'], 'price': '810 EGP', 'w': '1 KG'}]
+    {'kw': ['حنشان مدخن', 'تعبان مدخن'], 'price': '810 EGP', 'w': '1 KG'}
+]
 
-# ================== الأسئلة الشائعة (FAQ) ==================
+# ================== FAQ ==================
 FAQ = [
-    {
+     {
         "keywords": [
             "مواعيد فروعكم","مواعيد الفروع","الفروع شغاله للساعه كام","من كام لكام"
         ],
@@ -159,7 +155,15 @@ FAQ = [
     }
 ]
 
-# ================== المنطق الرئيسي ==================
+# ================== HELPERS ==================
+def detect_product(text):
+    for p in PRODUCTS:
+        for kw in p["keywords"]:
+            if sim(text, clean(kw)) > 85:
+                return p
+    return None
+
+# ================== MAIN LOGIC ==================
 def get_answer(user_id, text):
     q = clean(text)
 
@@ -168,33 +172,44 @@ def get_answer(user_id, text):
         if k in q:
             return v
 
-    # 2️⃣ FAQ
+    # 2️⃣ سؤال سعر (قبل أي حاجة)
+    if any(x in q for x in ["سعر", "بكام", "كام"]):
+        product = detect_product(q)
+
+        if product:
+            USER_CONTEXT[user_id] = product
+            return (
+                f"💰 سعر {product['name']}:\n"
+                f"{product['price']} – {product['weight']}"
+            )
+
+        last = USER_CONTEXT.get(user_id)
+        if last:
+            return (
+                f"💰 سعر {last['name']}:\n"
+                f"{last['price']} – {last['weight']}"
+            )
+
+        return "تحب تعرف سعر أنهي صنف؟ 😊"
+
+    # 3️⃣ تحديد منتج (حتى لو رقم بس)
+    product = detect_product(q)
+    if product:
+        USER_CONTEXT[user_id] = product
+        return (
+            f"{product['name']} 👌\n"
+            "تحب تعرف السعر؟"
+        )
+
+    # 4️⃣ FAQ
     for f in FAQ:
         for kw in f["keywords"]:
             if sim(q, clean(kw)) > 80:
                 return f["answer"]
 
-    # 3️⃣ سعر
-    if any(x in q for x in ["سعر", "بكام", "كام"]):
-        last = USER_CONTEXT.get(user_id)
-        if last:
-            return f"💰 سعر {last['name']}:\n{last['price']} – {last['w']}"
-        else:
-            return "تحب تعرف سعر أنهي صنف؟ 😊"
-
-    # 4️⃣ تحديد منتج
-    for p in PRODUCTS:
-        for kw in p["kw"]:
-            if sim(q, clean(kw)) > 85:
-                USER_CONTEXT[user_id] = p
-                return (
-                    f"{p['name']} 👌\n"
-                    "تحب تعرف السعر؟"
-                )
-
     return "ممكن توضح أكتر يا فندم؟ 😊"
 
-# ================== Webhook ==================
+# ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
     if request.args.get("hub.verify_token") == VERIFY_TOKEN:
