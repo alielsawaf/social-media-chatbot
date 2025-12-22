@@ -2,41 +2,11 @@ from flask import Flask, request
 from fuzzywuzzy import fuzz
 import requests
 import re
-import os
 
 app = Flask(__name__)
 
-# ================== CONFIG ==================
-PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD"
-VERIFY_TOKEN = "my_secret_token"
-
-# ================== MEMORY ==================
-USER_CONTEXT = {}  # ذاكرة مؤقتة
-
-# ================== TEXT UTILS ==================
-def clean(text):
-    if not text: return ""
-    text = text.lower().strip()
-    # فصل الأرقام عن الحروف (عشان سعر24 تبقى سعر 24)
-    text = re.sub(r"(\d+)", r" \1 ", text)
-    text = re.sub(r"[إأآا]", "ا", text)
-    text = re.sub(r"ة", "ه", text)
-    text = re.sub(r"ى", "ي", text)
-    text = re.sub(r"[^\w\s]", "", text)
-    return re.sub(r"\s+", " ", text)
-
-def sim(a, b):
-    return max(fuzz.token_set_ratio(a, b), fuzz.partial_ratio(a, b))
-
-# ================== GREETINGS ==================
-GREETINGS = {
-    "صباح": "صباح النور يا فندم 🌞 نورت رنجة أبو السيد",
-    "مساء": "مساء الخير يا فندم 🌙 نورت رنجة أبو السيد",
-    "سلام": "وعليكم السلام ورحمة الله 🤍",
-    "اهلا": "أهلاً بحضرتك 🌹 نورتنا",
-}
-
-# ================== PRODUCTS ==================
+# الذاكرة وقائمة المنتجات (كما هي في كودك)
+USER_CONTEXT = {} 
 PRODUCTS = [
     # الرنجة
     {'kw': ['رنجه مدخنه مبطرخه مرمله', 'رنجه مبطرخه', 'رنجه مرمله'], 'price': '250 EGP', 'w': '1 KG'},
@@ -156,77 +126,58 @@ FAQ = [
     }
 ]
 
-# ================== HELPERS ==================
+
+def clean(text):
+    if not text: return ""
+    text = text.lower().strip()
+    # تحويل الأرقام
+    text = text.translate(str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789"))
+    # حذف الحشو
+    stop_words = ['عايز', 'اعرف', 'لو سمحت', 'عندكم', 'عندكو', 'ممكن', 'يا فندم', 'حضرتك', 'بكام']
+    for word in stop_words: text = text.replace(word, "")
+    # توحيد الحروف
+    text = re.sub(r"(\d+)", r" \1 ", text)
+    text = re.sub(r"[إأآا]", "ا", text); text = re.sub(r"ة", "ه", text); text = re.sub(r"ى", "ي", text)
+    return re.sub(r"[^\w\s]", "", text).strip()
+
 def detect_product(text):
+    q = clean(text)
     for p in PRODUCTS:
-        for k in p["kw"]: # تصحيح: كان مكتوب keywords والاسم الصح kw
-            if sim(text, clean(k)) > 85:
+        for k in p["kw"]:
+            # استخدام ratio عالي للأخطاء الإملائية
+            if fuzz.partial_ratio(q, clean(k)) > 80 or clean(k) in q:
                 return p
     return None
 
-# ================== MAIN LOGIC ==================
 def get_answer(user_id, text):
-    q = clean(text)
+    raw_q = text.lower()
+    q_cleaned = clean(text)
     
-    # 1. فحص السلام
-    for k, v in GREETINGS.items():
-        if k in q: return v
+    # 1. فحص السلام (شامل)
+    if any(w in raw_q for w in ['اهلا', 'سلام', 'صباح', 'مساء', 'ازيك']):
+        return "أهلاً بك في رنجة أبو السيد 👋 حابب تعرف أسعارنا إيه النهاردة؟"
 
-    # 2. البحث عن منتج في الرسالة (عشان نحدث الذاكرة أول بأول)
-    current_product = detect_product(q)
-    if current_product:
-        USER_CONTEXT[user_id] = current_product
+    # 2. تحديد المنتج (تحديث الذاكرة)
+    product = detect_product(text)
+    if product: USER_CONTEXT[user_id] = product
 
-    # 3. لو الرسالة فيها "سعر" أو "بكام"
-    if any(x in q for x in ["سعر", "بكام", "كام", "قد ايه", "جنيه"]):
-        p = current_product or USER_CONTEXT.get(user_id)
+    # 3. هل السؤال عن سعر؟
+    if any(x in raw_q for x in ["سعر", "بكام", "كام", "قد ايه", "جنيه", "بكم"]):
+        p = product or USER_CONTEXT.get(user_id)
         if p:
             return f"💰 سعر {p['kw'][0]}:\nالوزن: {p['w']}\nالسعر: {p['price']} ✨"
         return "تحب تعرف سعر أنهي صنف؟ 😊"
 
-    # 4. لو مفيش طلب سعر، نشوف الـ FAQ
+    # 4. الـ FAQ
     for f in FAQ:
         for kw in f["keywords"]:
-            if sim(q, clean(kw)) > 85:
-                # لو الـ FAQ عن رنجة 24، نحدث الذاكرة بالمنتج بتاعها برضه
-                if "24" in kw:
-                    # بنحاول نلاقي منتج 24 في قائمة PRODUCTS ونخزنه
-                    p24 = next((p for p in PRODUCTS if "24" in p['kw'][0]), None)
-                    if p24: USER_CONTEXT[user_id] = p24
+            if fuzz.partial_ratio(q_cleaned, clean(kw)) > 85:
                 return f["answer"]
 
-    # 5. لو كتب اسم المنتج بس (زي 24 أو رنجة)
-    if current_product:
-        return f"📌 {current_product['kw'][0]}\nمتاح يا فندم، تحب تعرف السعر ولا تفاصيل تانية؟"
+    # 5. رد ذكي لو لقى صنف بس ملقاش سؤال
+    if product:
+        return f"📌 {product['kw'][0]} متاح يا فندم. تحب تعرف سعره؟"
 
     return "نعتذر منك، لم أفهم استفسارك. يمكنك السؤال عن الأسعار أو التوصيل 🛎️"
-# ================== WEBHOOK ==================
-@app.route("/webhook", methods=["GET"])
-def verify():
-    if request.args.get("hub.verify_token") == VERIFY_TOKEN:
-        return request.args.get("hub.challenge")
-    return "failed", 403
 
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    data = request.get_json()
-    if data.get("object") == "page":
-        for entry in data.get("entry", []):
-            for ev in entry.get("messaging", []):
-                sender = ev["sender"]["id"]
-                if "message" in ev and "text" in ev["message"]:
-                    reply = get_answer(sender, ev["message"]["text"])
-                    send_message(sender, reply)
-    return "ok", 200
-
-def send_message(user_id, text):
-    url = f"https://graph.facebook.com/v12.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
-    payload = {"recipient": {"id": user_id}, "message": {"text": text}}
-    try:
-        requests.post(url, json=payload)
-    except Exception as e:
-        print(f"Error sending message: {e}")
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
+# (باقي كود الـ Webhook و send_message كما هو)
