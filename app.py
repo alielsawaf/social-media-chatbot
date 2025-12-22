@@ -17,6 +17,8 @@ USER_CONTEXT = {}  # ذاكرة مؤقتة
 def clean(text):
     if not text: return ""
     text = text.lower().strip()
+    # فصل الأرقام عن الحروف (عشان سعر24 تبقى سعر 24)
+    text = re.sub(r"(\d+)", r" \1 ", text)
     text = re.sub(r"[إأآا]", "ا", text)
     text = re.sub(r"ة", "ه", text)
     text = re.sub(r"ى", "ي", text)
@@ -165,39 +167,39 @@ def detect_product(text):
 # ================== MAIN LOGIC ==================
 def get_answer(user_id, text):
     q = clean(text)
-
-    # 1️⃣ فحص السلام
+    
+    # 1. فحص السلام
     for k, v in GREETINGS.items():
         if k in q: return v
 
-    # 2️⃣ فحص الـ FAQ (أولوية للاستفسارات)
-    for f in FAQ:
-        for kw in f["keywords"]:
-            if sim(q, clean(kw)) > 80:
-                return f["answer"]
+    # 2. البحث عن منتج في الرسالة (عشان نحدث الذاكرة أول بأول)
+    current_product = detect_product(q)
+    if current_product:
+        USER_CONTEXT[user_id] = current_product
 
-    # 3️⃣ سؤال عن "سعر" (متابعة السياق)
-    if any(x in q for x in ["سعر", "بكام", "كام", "بقد ايه"]):
-        product = detect_product(q)
-        if product:
-            USER_CONTEXT[user_id] = product
-            return f"💰 سعر {product['kw'][0]}:\nالوزن: {product['w']}\nالسعر: {product['price']} ✨"
-        
-        # لو سأل بكام بس، نشوف كان بيكلمنا عن إيه
-        last = USER_CONTEXT.get(user_id)
-        if last:
-            return f"حضرتك تقصد {last['kw'][0]}؟ سعره {last['price']} للـ {last['w']} ✨"
-        
+    # 3. لو الرسالة فيها "سعر" أو "بكام"
+    if any(x in q for x in ["سعر", "بكام", "كام", "قد ايه", "جنيه"]):
+        p = current_product or USER_CONTEXT.get(user_id)
+        if p:
+            return f"💰 سعر {p['kw'][0]}:\nالوزن: {p['w']}\nالسعر: {p['price']} ✨"
         return "تحب تعرف سعر أنهي صنف؟ 😊"
 
-    # 4️⃣ لو كتب اسم المنتج بس
-    product = detect_product(q)
-    if product:
-        USER_CONTEXT[user_id] = product
-        return f"📌 {product['kw'][0]}\nمتاح يا فندم، تحب تعرف السعر؟"
+    # 4. لو مفيش طلب سعر، نشوف الـ FAQ
+    for f in FAQ:
+        for kw in f["keywords"]:
+            if sim(q, clean(kw)) > 85:
+                # لو الـ FAQ عن رنجة 24، نحدث الذاكرة بالمنتج بتاعها برضه
+                if "24" in kw:
+                    # بنحاول نلاقي منتج 24 في قائمة PRODUCTS ونخزنه
+                    p24 = next((p for p in PRODUCTS if "24" in p['kw'][0]), None)
+                    if p24: USER_CONTEXT[user_id] = p24
+                return f["answer"]
 
-    return "نعتذر منك، لم أفهم استفسارك. يمكنك السؤال عن (الأسعار، التوصيل، أو مواعيد الفروع) 🛎️"
+    # 5. لو كتب اسم المنتج بس (زي 24 أو رنجة)
+    if current_product:
+        return f"📌 {current_product['kw'][0]}\nمتاح يا فندم، تحب تعرف السعر ولا تفاصيل تانية؟"
 
+    return "نعتذر منك، لم أفهم استفسارك. يمكنك السؤال عن الأسعار أو التوصيل 🛎️"
 # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -227,3 +229,4 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
