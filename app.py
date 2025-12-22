@@ -9,11 +9,13 @@ app = Flask(__name__)
 # ================== الإعدادات ==================
 PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD"
 VERIFY_TOKEN = "my_secret_token"
+WHATSAPP_NUMBER = "201090636076"
+MENU_LINK = "https://heyzine.com/flip-book/31946f16d5.html"
 
-# ================== ذاكرة المحادثة ==================
+# ================== ذاكرة ==================
 USER_CONTEXT = {}  # user_id -> last_product
 
-# ================== أدوات اللغة ==================
+# ================== أدوات ==================
 def clean_arabic_text(text):
     if not text:
         return ""
@@ -30,19 +32,16 @@ def smart_similarity(a, b):
         fuzz.partial_ratio(a, b)
     )
 
-# ================== السلام ==================
-SMART_GREETINGS = {
-    "صباح": "صباح النور يا فندم 🌞",
-    "مساء": "مساء النور يا فندم 🌙",
-    "السلام": "وعليكم السلام ورحمة الله 🤍",
-    "ازيك": "أهلاً بحضرتك 🌹",
-    "اهلا": "أهلاً وسهلاً 👋",
-    "هاي": "أهلاً 👋"
-}
+def is_price_question(q):
+    return any(x in q for x in ["سعر", "بكام", "كام", "قد ايه", "عامل كام"])
+
+def is_greeting(q):
+    greetings = ["السلام عليكم", "السلام", "اهلا", "أهلا", "ازيك", "هاي", "هلا"]
+    return any(g == q or g in q for g in greetings)
 
 # ================== المنتجات ==================
 PRODUCTS = [
-     # الرنجة
+       # الرنجة
     {'kw': ['رنجه مدخنه مبطرخه مرمله', 'رنجه مبطرخه', 'رنجه مرمله'], 'price': '250 EGP', 'w': '1 KG'},
     {'kw': ['رنجه مدخنه', 'رنجه عاديه'], 'price': '200 EGP', 'w': '1 KG'},
     {'kw': ['رنجه مدخنه 24 قيراط', 'رنجه 24', 'رنجه عيار 24'], 'price': '300 EGP', 'w': '1 KG'},
@@ -83,67 +82,36 @@ PRODUCTS = [
     {'kw': ['حنشان مدخن', 'تعبان مدخن'], 'price': '810 EGP', 'w': '1 KG'}
 ]
 
-]
-
-# ================== INTENTS ==================
-INTENTS = [
-    {
-        "name": "hours",
-        "examples": [
-            "مواعيد الفروع","الفروع شغاله","شغالين لحد امتي"
-        ],
-        "answer": "🕙 مواعيد فروعنا من 10 صباحاً حتى 12 منتصف الليل"
-    },
-    {
-        "name": "smoking24",
-        "examples": ["رنجه 24","عيار 24","24"],
-        "answer": (
-            "رنجة عيار 24:\n"
-            "✔️ عدد ساعات التدخين اطول\n"
-            "✔️ حجم السمكة أصغر\n"
-            "✔️ طعم التدخين أقوى"
-        ),
-        "product_ref": "رنجه عيار 24"
-    }
-]
-
-# ================== استخراج Intent ==================
-def detect_intent(text):
-    best = None
-    score = 0
-    for intent in INTENTS:
-        for ex in intent["examples"]:
-            s = smart_similarity(text, clean_arabic_text(ex))
-            if s > score and s >= 75:
-                score = s
-                best = intent
-    return best
-
-# ================== استخراج منتجات ==================
-def get_related_products(text):
+# ================== منتجات مرتبطة ==================
+def get_related_products(user_text):
     related = []
     for p in PRODUCTS:
         for kw in p['kw']:
-            if smart_similarity(text, clean_arabic_text(kw)) >= 70:
+            if smart_similarity(clean_arabic_text(user_text), clean_arabic_text(kw)) >= 75:
                 related.append(p)
                 break
     return related
 
-# ================== منطق الرد ==================
+# ================== المنطق ==================
 def get_answer(user_id, text):
     q = clean_arabic_text(text)
 
-    # 1️⃣ سلام
-    for k, v in SMART_GREETINGS.items():
-        if k in q:
-            return {"text": v, "qr": None}
+    # 1️⃣ السلام
+    if is_greeting(q):
+        return {"text": "أهلاً بحضرتك 🌹 ", "qr": None}
 
-    # 2️⃣ سؤال سعر (أعلى أولوية)
-    if any(x in q for x in ['سعر','بكام','قد ايه','كام']):
+    # 2️⃣ رقم فقط (تأكيد اختيار)
+    if q.isdigit() and user_id in USER_CONTEXT:
+        p = USER_CONTEXT[user_id]
+        return {
+            "text": f"📌 {p['kw'][0]}\n💰 السعر: {p['price']}\n⚖️ الوزن: {p['w']}",
+            "qr": None
+        }
 
+    # 3️⃣ سؤال سعر
+    if is_price_question(q):
         related = get_related_products(q)
 
-        # رجوع لآخر منتج
         if not related and user_id in USER_CONTEXT:
             p = USER_CONTEXT[user_id]
             return {
@@ -151,7 +119,6 @@ def get_answer(user_id, text):
                 "qr": None
             }
 
-        # منتج واحد
         if len(related) == 1:
             USER_CONTEXT[user_id] = related[0]
             p = related[0]
@@ -160,31 +127,35 @@ def get_answer(user_id, text):
                 "qr": None
             }
 
+        if len(related) > 1:
+            qr = []
+            for p in related[:10]:
+                qr.append({
+                    "content_type": "text",
+                    "title": p['kw'][0][:20],
+                    "payload": f"PRICE|{PRODUCTS.index(p)}"
+                })
+            return {
+                "text": "تمام 👍 تقصد أنهي نوع بالظبط؟",
+                "qr": qr
+            }
+
         return {"text": "تحب تعرف سعر أنهي صنف؟ 😊", "qr": None}
 
-    # 3️⃣ Intent
-    intent = detect_intent(q)
-    if intent:
-
-        # تخزين المنتج لو موجود
-        if "product_ref" in intent:
-            for p in PRODUCTS:
-                if intent["product_ref"] in p["kw"][0]:
-                    USER_CONTEXT[user_id] = p
-                    break
-
-        return {"text": intent["answer"], "qr": None}
-
-    # 4️⃣ ذكر منتج
+    # 4️⃣ ذكر منتج بدون سعر
     related = get_related_products(q)
     if len(related) == 1:
         USER_CONTEXT[user_id] = related[0]
         return {
-            "text": f"تمام 👍 تحب تعرف السعر ولا عندك استفسار عن:\n📌 {related[0]['kw'][0]}",
+            "text": f"📌 {related[0]['kw'][0]}\nتحب تعرف السعر؟ 💰",
             "qr": None
         }
 
-    return {"text": "ممكن توضح استفسارك أكتر؟ 😊", "qr": None}
+    # 5️⃣ غير مفهوم
+    return {
+        "text": "ممكن توضح أكتر يا فندم؟ 😊",
+        "qr": None
+    }
 
 # ================== Webhook ==================
 @app.route('/webhook', methods=['GET'])
@@ -199,15 +170,33 @@ def webhook():
     for entry in data.get("entry", []):
         for msg_event in entry.get("messaging", []):
             sender = msg_event["sender"]["id"]
+            msg = msg_event.get("message", {})
 
-            if "message" in msg_event and "text" in msg_event["message"]:
-                res = get_answer(sender, msg_event["message"]["text"])
-                send_message(sender, res["text"])
+            if "quick_reply" in msg:
+                payload = msg["quick_reply"]["payload"]
+                if payload.startswith("PRICE"):
+                    idx = int(payload.split("|")[1])
+                    p = PRODUCTS[idx]
+                    USER_CONTEXT[sender] = p
+                    send_message(
+                        sender,
+                        f"📌 {p['kw'][0]}\n💰 السعر: {p['price']}\n⚖️ الوزن: {p['w']}"
+                    )
+
+            elif "text" in msg:
+                res = get_answer(sender, msg["text"])
+                send_message(sender, res["text"], res.get("qr"))
+
     return "ok", 200
 
-def send_message(user_id, text):
+def send_message(user_id, text, quick_replies=None):
     url = f"https://graph.facebook.com/v12.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
-    payload = {"recipient": {"id": user_id}, "message": {"text": text}}
+    payload = {
+        "recipient": {"id": user_id},
+        "message": {"text": text}
+    }
+    if quick_replies:
+        payload["message"]["quick_replies"] = quick_replies
     requests.post(url, json=payload)
 
 if __name__ == "__main__":
