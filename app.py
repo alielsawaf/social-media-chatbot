@@ -159,43 +159,78 @@ def get_related_products(user_text):
 def get_answer(user_id, text):
     q = clean_arabic_text(text)
 
-    # سلام
+    # 1️⃣ السلام
     for k, v in SMART_GREETINGS.items():
         if k in q:
             return {"text": v, "qr": None}
 
-    # Intent
-    intent = detect_intent(q)
-    if intent:
-        return {"text": intent["answer"], "qr": None}
+    # 2️⃣ سؤال سعر (أعلى أولوية)
+    if any(x in q for x in ['سعر','بكام','قد ايه','كام']):
 
-    # سعر
-    if any(x in q for x in ['سعر','بكام','قد ايه','عامل كام']):
+        # حاول نطلع منتجات من السؤال
         related = get_related_products(q)
 
+        # لو مفيش منتجات في السؤال → رجوع لآخر منتج
+        if not related and user_id in USER_CONTEXT:
+            p = USER_CONTEXT[user_id]
+            return {
+                "text": (
+                    f"📌 {p['kw'][0]}\n"
+                    f"💰 السعر: {p['price']}\n"
+                    f"⚖️ الوزن: {p['w']}"
+                ),
+                "qr": None
+            }
+
+        # منتج واحد واضح
         if len(related) == 1:
             USER_CONTEXT[user_id] = related[0]
             p = related[0]
             return {
-                "text": f"📌 {p['kw'][0]}\n💰 السعر: {p['price']}\n⚖️ الوزن: {p['w']}",
+                "text": (
+                    f"📌 {p['kw'][0]}\n"
+                    f"💰 السعر: {p['price']}\n"
+                    f"⚖️ الوزن: {p['w']}"
+                ),
                 "qr": None
             }
 
+        # أكتر من منتج → أزرار
         if len(related) > 1:
             USER_CONTEXT[user_id] = related
-            qr = []
-            for p in related:
-                qr.append({
+            quick_replies = []
+            for p in related[:10]:
+                quick_replies.append({
                     "content_type": "text",
                     "title": p['kw'][0][:20],
                     "payload": f"PRICE|{PRODUCTS.index(p)}"
                 })
-            return {"text": "تحب أنهي نوع؟ 👇", "qr": qr}
+            return {
+                "text": "تحب أنهي نوع بالظبط؟ 👇",
+                "qr": quick_replies
+            }
 
-        return {"text": "تحب تعرف سعر أنهي صنف؟", "qr": None}
+        return {"text": "تحب تعرف سعر أنهي صنف؟ 😊", "qr": None}
 
-    return {"text": "ممكن توضح استفسارك أكتر؟ 😊", "qr": None}
+    # 3️⃣ INTENTS (بعد السعر)
+    intent = detect_intent(q)
+    if intent:
+        return {"text": intent["answer"], "qr": None}
 
+    # 4️⃣ ذكر منتج بدون سعر
+    related = get_related_products(q)
+    if len(related) == 1:
+        USER_CONTEXT[user_id] = related[0]
+        return {
+            "text": f"تمام 👍 تحب تعرف السعر ولا عندك استفسار عن:\n📌 {related[0]['kw'][0]}",
+            "qr": None
+        }
+
+    # 5️⃣ غير مفهوم
+    return {
+        "text": "ممكن توضح استفسارك أكتر يا فندم؟ 😊",
+        "qr": None
+    }
 # ================== Webhook ==================
 @app.route('/webhook', methods=['GET'])
 def verify():
@@ -241,3 +276,4 @@ def send_message(user_id, text, quick_replies=None):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
