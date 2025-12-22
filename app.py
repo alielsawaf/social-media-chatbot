@@ -11,12 +11,11 @@ PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFe
 VERIFY_TOKEN = "my_secret_token"
 
 # ================== MEMORY ==================
-USER_CONTEXT = {}  # user_id -> product
+USER_CONTEXT = {}  # ذاكرة مؤقتة
 
 # ================== TEXT UTILS ==================
 def clean(text):
-    if not text:
-        return ""
+    if not text: return ""
     text = text.lower().strip()
     text = re.sub(r"[إأآا]", "ا", text)
     text = re.sub(r"ة", "ه", text)
@@ -29,15 +28,15 @@ def sim(a, b):
 
 # ================== GREETINGS ==================
 GREETINGS = {
-    "صباح": "صباح النور يا فندم 🌞",
-    "مساء": "مساء الخير يا فندم 🌙",
-    "السلام": "وعليكم السلام ورحمة الله 🤍",
-    "اهلا": "أهلاً بحضرتك 🌹",
+    "صباح": "صباح النور يا فندم 🌞 نورت رنجة أبو السيد",
+    "مساء": "مساء الخير يا فندم 🌙 نورت رنجة أبو السيد",
+    "سلام": "وعليكم السلام ورحمة الله 🤍",
+    "اهلا": "أهلاً بحضرتك 🌹 نورتنا",
 }
 
 # ================== PRODUCTS ==================
 PRODUCTS = [
-     # الرنجة
+    # الرنجة
     {'kw': ['رنجه مدخنه مبطرخه مرمله', 'رنجه مبطرخه', 'رنجه مرمله'], 'price': '250 EGP', 'w': '1 KG'},
     {'kw': ['رنجه مدخنه', 'رنجه عاديه'], 'price': '200 EGP', 'w': '1 KG'},
     {'kw': ['رنجه مدخنه 24 قيراط', 'رنجه 24', 'رنجه عيار 24'], 'price': '300 EGP', 'w': '1 KG'},
@@ -80,7 +79,7 @@ PRODUCTS = [
 
 # ================== FAQ ==================
 FAQ = [
-     {
+    {
         "keywords": [
             "مواعيد فروعكم","مواعيد الفروع","الفروع شغاله للساعه كام","من كام لكام"
         ],
@@ -158,8 +157,8 @@ FAQ = [
 # ================== HELPERS ==================
 def detect_product(text):
     for p in PRODUCTS:
-        for kw in p["keywords"]:
-            if sim(text, clean(kw)) > 85:
+        for k in p["kw"]: # تصحيح: كان مكتوب keywords والاسم الصح kw
+            if sim(text, clean(k)) > 85:
                 return p
     return None
 
@@ -167,47 +166,37 @@ def detect_product(text):
 def get_answer(user_id, text):
     q = clean(text)
 
-    # 1️⃣ سلام
+    # 1️⃣ فحص السلام
     for k, v in GREETINGS.items():
-        if k in q:
-            return v
+        if k in q: return v
 
-    # 2️⃣ سؤال سعر (قبل أي حاجة)
-    if any(x in q for x in ["سعر", "بكام", "كام"]):
-        product = detect_product(q)
-
-        if product:
-            USER_CONTEXT[user_id] = product
-            return (
-                f"💰 سعر {product['name']}:\n"
-                f"{product['price']} – {product['weight']}"
-            )
-
-        last = USER_CONTEXT.get(user_id)
-        if last:
-            return (
-                f"💰 سعر {last['name']}:\n"
-                f"{last['price']} – {last['weight']}"
-            )
-
-        return "تحب تعرف سعر أنهي صنف؟ 😊"
-
-    # 3️⃣ تحديد منتج (حتى لو رقم بس)
-    product = detect_product(q)
-    if product:
-        USER_CONTEXT[user_id] = product
-        return (
-            f"{product['name']} 👌\n"
-            "تحب تعرف السعر؟"
-        )
-
-    # 4️⃣ FAQ
+    # 2️⃣ فحص الـ FAQ (أولوية للاستفسارات)
     for f in FAQ:
         for kw in f["keywords"]:
             if sim(q, clean(kw)) > 80:
                 return f["answer"]
 
-    return "ممكن توضح أكتر يا فندم؟ 😊"
+    # 3️⃣ سؤال عن "سعر" (متابعة السياق)
+    if any(x in q for x in ["سعر", "بكام", "كام", "بقد ايه"]):
+        product = detect_product(q)
+        if product:
+            USER_CONTEXT[user_id] = product
+            return f"💰 سعر {product['kw'][0]}:\nالوزن: {product['w']}\nالسعر: {product['price']} ✨"
+        
+        # لو سأل بكام بس، نشوف كان بيكلمنا عن إيه
+        last = USER_CONTEXT.get(user_id)
+        if last:
+            return f"حضرتك تقصد {last['kw'][0]}؟ سعره {last['price']} للـ {last['w']} ✨"
+        
+        return "تحب تعرف سعر أنهي صنف؟ 😊"
+
+    # 4️⃣ لو كتب اسم المنتج بس
+    product = detect_product(q)
+    if product:
+        USER_CONTEXT[user_id] = product
+        return f"📌 {product['kw'][0]}\nمتاح يا فندم، تحب تعرف السعر؟"
+
+    return "نعتذر منك، لم أفهم استفسارك. يمكنك السؤال عن (الأسعار، التوصيل، أو مواعيد الفروع) 🛎️"
 
 # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
@@ -219,18 +208,22 @@ def verify():
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
-    for entry in data.get("entry", []):
-        for ev in entry.get("messaging", []):
-            sender = ev["sender"]["id"]
-            if "message" in ev and "text" in ev["message"]:
-                reply = get_answer(sender, ev["message"]["text"])
-                send_message(sender, reply)
+    if data.get("object") == "page":
+        for entry in data.get("entry", []):
+            for ev in entry.get("messaging", []):
+                sender = ev["sender"]["id"]
+                if "message" in ev and "text" in ev["message"]:
+                    reply = get_answer(sender, ev["message"]["text"])
+                    send_message(sender, reply)
     return "ok", 200
 
 def send_message(user_id, text):
     url = f"https://graph.facebook.com/v12.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
     payload = {"recipient": {"id": user_id}, "message": {"text": text}}
-    requests.post(url, json=payload)
+    try:
+        requests.post(url, json=payload)
+    except Exception as e:
+        print(f"Error sending message: {e}")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
