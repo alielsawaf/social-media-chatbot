@@ -10,26 +10,26 @@ app = Flask(__name__)
 PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD"
 VERIFY_TOKEN = "my_secret_token"
 
-# ================== MEMORY ==================
+# ذاكرة المستخدمين
 USER_CONTEXT = {} 
 
 # ================== UTILS ==================
 def clean(text):
     if not text: return ""
     text = str(text).lower().strip()
-    # تحويل الأرقام العربي لإنجليزي
+    # توحيد الأرقام العربية والإنجليزية
     text = text.translate(str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789"))
-    # توحيد الحروف
+    # توحيد الحروف العربية المتشابهة
     text = re.sub(r"[إأآا]", "ا", text)
     text = re.sub(r"ة", "ه", text)
     text = re.sub(r"ى", "ي", text)
-    # إزالة الرموز مع الحفاظ على الأرقام والحروف
+    # إزالة الرموز والحفاظ على المسافات
     text = re.sub(r"[^\w\s\d]", " ", text)
     return re.sub(r"\s+", " ", text).strip()
 
-# ================== PRODUCTS ==================
+# ================== PRODUCTS DATA ==================
 PRODUCTS = [
-    # الرنجة
+     # الرنجة
     {'kw': ['رنجه مدخنه مبطرخه مرمله', 'رنجه مبطرخه', 'رنجه مرمله'], 'price': '250 EGP', 'w': '1 KG'},
     {'kw': ['رنجه مدخنه', 'رنجه عاديه'], 'price': '200 EGP', 'w': '1 KG'},
     {'kw': ['رنجه مدخنه 24 قيراط', 'رنجه 24', 'رنجه عيار 24'], 'price': '300 EGP', 'w': '1 KG'},
@@ -68,9 +68,10 @@ PRODUCTS = [
     {'kw': ['انشوجه فيليه زيت', 'انشوجه'], 'price': '110 EGP', 'w': '125 G'},
     {'kw': ['سردين مملح'], 'price': '200 EGP', 'w': '250 G'},
     {'kw': ['حنشان مدخن', 'تعبان مدخن'], 'price': '810 EGP', 'w': '1 KG'}
+
 ]
 
-# ================== FAQ ==================
+# ================== FAQ DATA ==================
 FAQ = [
      {
         "keywords": ["دود", "طفيليات", "دوده", "مدوده", "حاجه في بطنها"],
@@ -176,9 +177,10 @@ FAQ = [
         "keywords": ["مواد حافظه"],
         "answer": "كل المنتجات عندنا بدون مواد حافظة"
     }
+
 ]
 
-# ================== DETECTOR ==================
+# ================== CORE LOGIC ==================
 def detect_product(text):
     q = clean(text)
     best_p = None
@@ -186,60 +188,55 @@ def detect_product(text):
     for p in PRODUCTS:
         for k in p["kw"]:
             target = clean(k)
-            # استخدام partial_ratio عشان لو الكلمة جزء من الجملة
-            score = fuzz.partial_ratio(target, q)
-            if score > 85:
-                # ندي أولوية للاسم الأطول عشان يفرق بين رنجه ورنجه 24
-                final_score = score + len(target)
-                if final_score > max_score:
-                    max_score = final_score
+            if target in q or fuzz.partial_ratio(target, q) > 85:
+                score = len(target)
+                if score > max_score:
+                    max_score = score
                     best_p = p
     return best_p
 
-# ================== MAIN LOGIC ==================
 def get_answer(user_id, text):
     try:
-        q_raw = text.lower().strip()
-        q_clean = clean(text)
+        raw_q = text.lower().strip()
+        q_cleaned = clean(text)
 
         # 1. الترحيب
-        if any(w in q_raw for w in ['اهلا', 'سلام', 'صباح', 'مساء', 'ازيك', 'هاي']):
-            return "أهلاً بك في رنجة أبو السيد 👋 نورتنا.. حابب تعرف أسعارنا النهاردة ولا عندك استفسار؟ ✨"
+        if any(w in raw_q for w in ['اهلا', 'سلام', 'ازيك', 'هاي']):
+            return "أهلاً بك في رنجة أبو السيد 👋 نورتنا.. حابب تعرف أسعارنا النهاردة؟ ✨"
 
-        # 2. البحث عن المنتج
+        # 2. كشف المنتج وتخزينه في الذاكرة
         product = detect_product(text)
         if product:
             USER_CONTEXT[user_id] = product
 
         # 3. فحص طلب السعر أو التأكيد
-        CONFIRMATION = ['اه', 'ايوه', 'ماشي', 'تمام', 'ياريت', 'يا ريت', 'قولي']
-        is_price_req = any(x in q_clean for x in ["سعر", "بكام", "كام", "بكم", "اسعار"])
-        is_confirm = any(word == q_clean for word in CONFIRMATION)
+        is_price_req = any(x in q_cleaned for x in ["سعر", "بكام", "كام", "بكم", "فلوس"])
+        is_confirm = any(word == q_cleaned for word in ['اه', 'ايوه', 'تمام', 'ياريت', 'ماشي'])
 
         if is_price_req or is_confirm:
             p = product or USER_CONTEXT.get(user_id)
             if p:
                 return f"💰 سعر {p['kw'][0]}:\nالوزن: {p['w']}\nالسعر: {p['price']} ✨"
             if is_price_req:
-                return "تحب تعرف سعر أنهي صنف؟ 😊 (متاح رنجة، فسيخ، بطارخ، تونة..)"
+                return "دا لينك منيو الأسعار والمنتجات: https://heyzine.com/flip-book/31946f16d5.html"
 
-        # 4. الـ FAQ
+        # 4. الـ FAQ (الأسئلة الشائعة)
         for f in FAQ:
-            for kw in f["keywords"]:
-                if clean(kw) in q_clean or fuzz.partial_ratio(clean(kw), q_clean) > 90:
-                    return f["answer"]
+            if any(clean(kw) in q_cleaned for kw in f["keywords"]):
+                return f["answer"]
 
-        # 5. لو ذكر المنتج فقط
+        # 5. إذا ذكر المنتج فقط
         if product:
             return f"📌 {product['kw'][0]} متاح يا فندم. تحب تعرف السعر؟"
 
-        return "نورتنا في رنجة أبو السيد 👋.. اؤمرنا محتاج تسأل عن إيه؟ (متاح رنجة، فسيخ، بطارخ، تونة)"
+        # 6. الرد الافتراضي
+        return "نورتنا في رنجة أبو السيد 👋.. اؤمرنا محتاج تسأل عن إيه؟ (رنجة، فسيخ، بطارخ، تونة) ✨"
 
     except Exception as e:
-        print(f"ERROR: {e}")
+        print(f"Error: {e}")
         return "نورتنا يا فندم، اؤمرنا محتاج تسأل عن إيه؟ ✨"
 
-# ================== FLASK ROUTES ==================
+# ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
     if request.args.get("hub.verify_token") == VERIFY_TOKEN:
