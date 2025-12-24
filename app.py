@@ -191,47 +191,63 @@ def detect_product(text):
 
 # ================== 3. المنطق المطور للرد ==================
 def get_answer(user_id, text):
-    raw_q = text.lower()
-    q_cleaned = clean(text)
-    
-    # [أ] تحديث الذاكرة فوراً (سواء من المنتجات أو من الـ FAQ)
-    product = detect_product(text)
-    
-    # حركة ذكية: لو العميل سأل سؤال FAQ عن التونة مثلاً، نحدث الذاكرة بالتونة
-    if not product:
-        if 'تونه' in q_cleaned: product = next((p for p in PRODUCTS if 'تونه' in p['kw'][0]), None)
-        if 'فسيخ' in q_cleaned: product = next((p for p in PRODUCTS if 'فسيخ' in p['kw'][0]), None)
-        if 'رنجه' in q_cleaned: product = next((p for p in PRODUCTS if 'رنجه' in p['kw'][0]), None)
+    try:
+        # 1. تنظيف أولي سريع للسلام
+        raw_q = text.lower().strip()
+        q_cleaned = clean(text)
 
-    if product:
-        USER_CONTEXT[user_id] = product
+        # قائمة كلمات السلام (فحص مباشر قبل أي تعقيد)
+        if any(w in raw_q for w in ['اهلا', 'سلام', 'ازيك', 'هاي', 'صباح', 'مساء', 'مرحبا', 'هلو']):
+            return "أهلاً بك في رنجة أبو السيد 👋 نورتنا.. حابب تعرف أسعارنا النهاردة ولا عندك استفسار؟ ✨"
 
-    # [ب] فحص السلام
-    if any(w in q_cleaned for w in ['اهلا', 'سلام', 'صباح', 'مساء', 'ازيك']):
-        return "أهلاً بك في رنجة أبو السيد 👋 نورتنا.. حابب تعرف أسعارنا النهاردة ولا عندك استفسار؟ ✨"
+        # 2. البحث عن المنتج وتحديث الذاكرة
+        product = detect_product(text)
+        
+        # ذكاء إضافي: لو ملقاش منتج صريح بس لقى كلمة (تونه، فسيخ، رنجه) في الجملة
+        if not product:
+            if 'تونه' in q_cleaned: 
+                product = next((p for p in PRODUCTS if 'تونه' in p['kw'][0]), None)
+            elif 'فسيخ' in q_cleaned: 
+                product = next((p for p in PRODUCTS if 'فسيخ' in p['kw'][0]), None)
+            elif 'رنجه' in q_cleaned: 
+                product = next((p for p in PRODUCTS if 'رنجه' in p['kw'][0]), None)
 
-    # [ج] طلب السعر أو كلمات التأكيد (ياريت / اه)
-    is_price_req = any(x in q_cleaned for x in ["سعر", "بكام", "كام", "بقد ايه", "فلوس"])
-    is_confirm = any(word in q_cleaned for word in CONFIRMATION_WORDS)
+        # تحديث الذاكرة إذا وجد منتج
+        if product:
+            USER_CONTEXT[user_id] = product
 
-    if is_price_req or is_confirm:
-        p = product or USER_CONTEXT.get(user_id)
-        if p:
-            return f"💰 سعر {p['kw'][0]}:\nالوزن: {p['w']}\nالسعر: {p['price']} ✨"
-        return "تحب تعرف سعر أنهي صنف؟ 😊"
+        # 3. فحص كلمات التأكيد (اه، ياريت، تمام)
+        CONFIRMATION_WORDS = ['اه', 'ايوه', 'ماشي', 'تمام', 'ياريت', 'يا ريت', 'قولي', 'وريني', 'طبعا']
+        is_confirm = any(word == q_cleaned for word in CONFIRMATION_WORDS) or (q_cleaned in CONFIRMATION_WORDS)
 
-    # [د] الـ FAQ (الآن لن يمنع تحديث الذاكرة)
-    for f in FAQ:
-        for kw in f["keywords"]:
-            if clean(kw) in q_cleaned or fuzz.partial_ratio(clean(kw), q_cleaned) > 85:
-                return f["answer"]
+        # 4. فحص طلب السعر
+        is_price_req = any(x in q_cleaned for x in ["سعر", "بكام", "كام", "قد ايه", "فلوس", "بكم"])
 
-    # [هـ] لو لقى اسم منتج بس (زي "في بطارخ")
-    if product:
-        return f"📌 {product['kw'][0]} متاح يا فندم. تحب تعرف السعر؟"
+        if is_price_req or is_confirm:
+            p = product or USER_CONTEXT.get(user_id)
+            if p:
+                return f"💰 سعر {p['kw'][0]}:\nالوزن: {p['w']}\nالسعر: {p['price']} ✨"
+            if is_price_req:
+                return "تحب تعرف سعر أنهي صنف؟ 😊 (متاح رنجة، فسيخ، بطارخ، تونة..)"
 
-    return "نعتذر منك، لم أفهم استفسارك بدقة. يمكنك السؤال عن (الأسعار، التوصيل، أو مواعيد الفروع) ✨"
-      # ================== WEBHOOK ==================
+        # 5. الـ FAQ (الـ 54 سؤال)
+        for f in FAQ:
+            for kw in f["keywords"]:
+                # فحص بالاحتواء المباشر أو نسبة التشابه
+                if clean(kw) in q_cleaned or fuzz.partial_ratio(clean(kw), q_cleaned) > 85:
+                    return f["answer"]
+
+        # 6. إذا ذكر المنتج فقط (مثل: "في بطارخ")
+        if product:
+            return f"📌 {product['kw'][0]} متاح يا فندم. تحب تعرف السعر؟"
+
+        # 7. الرد النهائي (Fallback) لضمان عدم الصمت
+        return "نورتنا في رنجة أبو السيد 👋.. ممكن توضح سؤالك أكتر؟ حابب تعرف (الأسعار، المنيو، أماكن الفروع)؟ ✨"
+
+    except Exception as e:
+        print(f"Error in get_answer: {e}")
+        return "نورتنا يا فندم، اؤمرنا محتاج تسأل عن إيه؟ ✨"
+          # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
     if request.args.get("hub.verify_token") == VERIFY_TOKEN:
@@ -257,6 +273,7 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
 
