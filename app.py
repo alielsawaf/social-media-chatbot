@@ -1,5 +1,4 @@
 from flask import Flask, request
-from fuzzywuzzy import fuzz
 import requests
 import re
 import os
@@ -21,9 +20,9 @@ def clean(text):
     text = re.sub(r"ة", "ه", text)
     text = re.sub(r"ى", "ي", text)
     text = re.sub(r"[^\w\s\d]", " ", text)
-    return re.sub(r"\s+", " ", text).strip()
+    return " ".join(text.split())
 
-# ================== DATA (ترتيب دقيق) ==================
+# ================== DATA ==================
 PRODUCTS = [
     # الرنجة
     {'kw': ['رنجه مدخنه مبطرخه مرمله', 'رنجه مبطرخه', 'رنجه مرمله'], 'price': '250 EGP', 'w': '1 KG'},
@@ -175,49 +174,46 @@ FAQ = [
 
 # ================== CORE LOGIC ==================
 def get_answer(user_id, text):
-    try:
-        q_clean = clean(text)
-        
-        # 1. الترحيب
-        if any(w in q_clean for w in ['اهلا', 'سلام', 'ازيك']):
-            return "أهلاً بك في رنجة أبو السيد 👋 نورتنا.. حابب تعرف أسعارنا النهاردة؟"
+    q_clean = clean(text)
+    
+    # 1. الترحيب
+    if any(w in q_clean for w in ['اهلا', 'سلام', 'ازيك', 'هاي']):
+        return "أهلاً بك في رنجة أبو السيد 👋 حابب تعرف أسعارنا النهاردة؟"
 
-        # 2. البحث عن المنتج (بالمطابقة المباشرة)
-        detected_p = None
-        for p in PRODUCTS:
-            for k in p["kw"]:
-                if clean(k) in q_clean:
-                    detected_p = p
-                    break
-            if detected_p: break
+    # 2. البحث عن المنتج (بسيط ومباشر)
+    detected_p = None
+    for p in PRODUCTS:
+        for k in p["kw"]:
+            if clean(k) in q_clean:
+                detected_p = p
+                break
+        if detected_p: break
 
-        # 3. تحديث الذاكرة لو لقى منتج جديد
-        if detected_p:
-            USER_CONTEXT[user_id] = detected_p
+    # 3. تحديث الذاكرة
+    if detected_p:
+        USER_CONTEXT[user_id] = detected_p
 
-        # 4. الـ FAQ
-        for f in FAQ:
-            if any(clean(kw) in q_clean for kw in f["keywords"]):
-                return f["answer"]
+    # 4. الـ FAQ
+    for f in FAQ:
+        if any(clean(kw) in q_clean for kw in f["keywords"]):
+            return f["answer"]
 
-        # 5. منطق السعر والتأكيد
-        is_price_req = any(x in q_clean for x in ["سعر", "بكام", "كام", "بكم"])
-        is_confirm = any(word == q_clean for word in ['اه', 'ايوه', 'تمام', 'ياريت'])
+    # 5. منطق السعر
+    is_price_req = any(x in q_clean for x in ["سعر", "بكام", "كام", "بكم", "فلوس"])
+    is_confirm = any(word == q_clean for word in ['اه', 'ايوه', 'تمام', 'ياريت', 'ماشي'])
 
-        if is_price_req or is_confirm:
-            p = detected_p or USER_CONTEXT.get(user_id)
-            if p:
-                return f"💰 سعر {p['name']}:\nالوزن: {p['w']}\nالسعر: {p['price']} ✨"
-            return "دا لينك منيو الأسعار والمنتجات: https://heyzine.com/flip-book/31946f16d5.html"
+    if is_price_req or is_confirm:
+        p = detected_p or USER_CONTEXT.get(user_id)
+        if p:
+            return f"💰 سعر {p['name']}:\nالوزن: {p['w']}\nالسعر: {p['price']} ✨"
+        return "دا لينك منيو الأسعار لكل المنتجات: https://heyzine.com/flip-book/31946f16d5.html"
 
-        # 6. لو ذكر الصنف فقط
-        if detected_p:
-            return f"📌 {detected_p['name']} متاح يا فندم. تحب تعرف السعر؟"
+    # 6. إذا ذكر الصنف فقط
+    if detected_p:
+        return f"📌 {detected_p['name']} متاح يا فندم. تحب تعرف السعر؟"
 
-        return "نورتنا في رنجة أبو السيد 👋.. اؤمرنا محتاج تسأل عن إيه؟ (رنجة، فسيخ، بطارخ، تونة)"
-
-    except Exception:
-        return "نورتنا يا فندم، اؤمرنا محتاج تسأل عن إيه؟ ✨"
+    # 7. الرد النهائي (Fallback)
+    return "نورتنا في رنجة أبو السيد 👋.. اؤمرنا محتاج تسأل عن إيه؟ (رنجة، فسيخ، بطارخ، تونة)"
 
 # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
@@ -228,14 +224,18 @@ def verify():
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    data = request.get_json()
-    if data.get("object") == "page":
-        for entry in data.get("entry", []):
-            for ev in entry.get("messaging", []):
-                sender = ev["sender"]["id"]
-                if "message" in ev and "text" in ev["message"]:
-                    reply = get_answer(sender, ev["message"]["text"])
-                    send_message(sender, reply)
+    try:
+        data = request.get_json()
+        if data.get("object") == "page":
+            for entry in data.get("entry", []):
+                for ev in entry.get("messaging", []):
+                    sender = ev["sender"]["id"]
+                    if "message" in ev and "text" in ev["message"]:
+                        msg_text = ev["message"]["text"]
+                        reply = get_answer(sender, msg_text)
+                        send_message(sender, reply)
+    except:
+        pass
     return "ok", 200
 
 def send_message(user_id, text):
