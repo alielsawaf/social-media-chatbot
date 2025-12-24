@@ -10,20 +10,16 @@ app = Flask(__name__)
 PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD"
 VERIFY_TOKEN = "my_secret_token"
 
-# ذاكرة المستخدمين
 USER_CONTEXT = {} 
 
 # ================== UTILS ==================
 def clean(text):
     if not text: return ""
     text = str(text).lower().strip()
-    # توحيد الأرقام العربية والإنجليزية
     text = text.translate(str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789"))
-    # توحيد الحروف العربية المتشابهة
     text = re.sub(r"[إأآا]", "ا", text)
     text = re.sub(r"ة", "ه", text)
     text = re.sub(r"ى", "ي", text)
-    # إزالة الرموز والحفاظ على المسافات
     text = re.sub(r"[^\w\s\d]", " ", text)
     return re.sub(r"\s+", " ", text).strip()
 
@@ -177,63 +173,53 @@ FAQ = [
         "keywords": ["مواد حافظه"],
         "answer": "كل المنتجات عندنا بدون مواد حافظة"
     }
-
 ]
 
 # ================== CORE LOGIC ==================
-def detect_product(text):
-    q = clean(text)
-    best_p = None
-    max_score = 0
-    for p in PRODUCTS:
-        for k in p["kw"]:
-            target = clean(k)
-            if target in q or fuzz.partial_ratio(target, q) > 85:
-                score = len(target)
-                if score > max_score:
-                    max_score = score
-                    best_p = p
-    return best_p
-
 def get_answer(user_id, text):
     try:
-        raw_q = text.lower().strip()
-        q_cleaned = clean(text)
-
+        q_clean = clean(text)
+        
         # 1. الترحيب
-        if any(w in raw_q for w in ['اهلا', 'سلام', 'ازيك', 'هاي']):
-            return "أهلاً بك في رنجة أبو السيد 👋 نورتنا.. حابب تعرف أسعارنا النهاردة؟ ✨"
+        if any(w in q_clean for w in ['اهلا', 'سلام', 'ازيك']):
+            return "أهلاً بك في رنجة أبو السيد 👋 نورتنا.. حابب تعرف أسعارنا النهاردة؟"
 
-        # 2. كشف المنتج وتخزينه في الذاكرة
-        product = detect_product(text)
-        if product:
-            USER_CONTEXT[user_id] = product
+        # 2. البحث عن منتج (مطابقة مباشرة أولاً لضمان الدقة)
+        current_product = None
+        for p in PRODUCTS:
+            if any(clean(k) in q_clean for k in p["kw"]):
+                current_product = p
+                break
 
-        # 3. فحص طلب السعر أو التأكيد
-        is_price_req = any(x in q_cleaned for x in ["سعر", "بكام", "كام", "بكم", "فلوس"])
-        is_confirm = any(word == q_cleaned for word in ['اه', 'ايوه', 'تمام', 'ياريت', 'ماشي'])
+        # 3. تحديث الذاكرة
+        if current_product:
+            USER_CONTEXT[user_id] = current_product
 
+        # 4. فحص الـ FAQ (الأسئلة العامة) قبل الرد بالسعر
+        # ملحوظة: لو السؤال فيه "سعر الفسيخ" الأولوية هنا للأسعار، لو "تمليح الفسيخ" الأولوية للـ FAQ
+        is_price_req = any(x in q_clean for x in ["سعر", "بكام", "كام", "بكم"])
+        
+        # إذا لم يكن طلباً صريحاً للسعر، ابحث في الأسئلة العامة أولاً
+        if not is_price_req:
+            for f in FAQ:
+                if any(clean(kw) in q_clean for kw in f["keywords"]):
+                    return f["answer"]
+
+        # 5. الرد على السعر
+        is_confirm = any(word == q_clean for word in ['اه', 'ايوه', 'تمام', 'ياريت'])
         if is_price_req or is_confirm:
-            p = product or USER_CONTEXT.get(user_id)
+            p = current_product or USER_CONTEXT.get(user_id)
             if p:
                 return f"💰 سعر {p['kw'][0]}:\nالوزن: {p['w']}\nالسعر: {p['price']} ✨"
-            if is_price_req:
-                return "دا لينك منيو الأسعار والمنتجات: https://heyzine.com/flip-book/31946f16d5.html"
+            return "دا لينك منيو الأسعار لكل المنتجات: https://heyzine.com/flip-book/31946f16d5.html"
 
-        # 4. الـ FAQ (الأسئلة الشائعة)
-        for f in FAQ:
-            if any(clean(kw) in q_cleaned for kw in f["keywords"]):
-                return f["answer"]
+        # 6. إذا ذكر اسم المنتج فقط
+        if current_product:
+            return f"📌 {current_product['kw'][0]} متاح يا فندم. تحب تعرف السعر؟"
 
-        # 5. إذا ذكر المنتج فقط
-        if product:
-            return f"📌 {product['kw'][0]} متاح يا فندم. تحب تعرف السعر؟"
-
-        # 6. الرد الافتراضي
-        return "نورتنا في رنجة أبو السيد 👋.. اؤمرنا محتاج تسأل عن إيه؟ (رنجة، فسيخ، بطارخ، تونة) ✨"
+        return "نورتنا في رنجة أبو السيد 👋.. اؤمرنا محتاج تسأل عن إيه؟ (رنجة، فسيخ، بطارخ، تونة)"
 
     except Exception as e:
-        print(f"Error: {e}")
         return "نورتنا يا فندم، اؤمرنا محتاج تسأل عن إيه؟ ✨"
 
 # ================== WEBHOOK ==================
