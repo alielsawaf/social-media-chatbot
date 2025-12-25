@@ -162,26 +162,67 @@ PRODUCT_MAP = {
 
 
 # ================== LOGIC ==================
+def normalize(text):
+    return (
+        text.lower()
+        .replace("ة", "ه")
+        .replace("أ", "ا")
+        .replace("إ", "ا")
+        .replace("آ", "ا")
+        .strip()
+    )
+
+
 def get_answer(text):
-    # تنظيف النص للتعامل مع الحروف العربية
-    q = text.lower().replace("ة", "ه").replace("أ", "ا").replace("إ", "ا").replace("آ", "ا").strip()
-    
-    # أولاً: ابحث في الأسئلة العامة (FAQ)
-    for key in FAQ_MAP:
-        if key in q:
-            return FAQ_MAP[key]
-            
-    # ثانياً: ابحث في أسعار المنتجات
-    for key in PRODUCT_MAP:
-        if key in q:
-            return PRODUCT_MAP[key]
-    
-    # ثالثاً: الترحيب
+    q = normalize(text)
+
+    # ====== 1. الترحيب ======
     if any(w in q for w in ["اهلا", "سلام", "ازيك", "صباح", "مساء", "هاي"]):
         return "أهلاً بك في رنجة أبو السيد 👋 نورتنا.. أساعد حضرتك ازاي؟"
-    
-    # رابعاً: الرد الافتراضي
-    return "ممكن حضرتك توضح استفسارك اكتر"
+
+    # ====== 2. أسئلة مختصرة (كلمة واحدة) ======
+    if "دود" in q:
+        return FAQ_MAP["الرنجة فيها دود"]
+
+    if "دم" in q:
+        return FAQ_MAP["ليه الفسيخ بيكون في دم"]
+
+    # ====== 3. أسئلة إدارية ======
+    for key in FAQ_MAP:
+        if normalize(key) in q:
+            return FAQ_MAP[key]
+
+    # ====== 4. أسعار عامة ======
+    if any(w in q for w in ["الاسعار", "الاسعار ايه", "قائمة الاسعار", "سعر"]):
+        return "حضرتك تحب تعرف سعر أنهي منتج؟ (رنجة – فسيخ – ماكريل – سلمون – تونة)"
+
+    # ====== 5. الرنجة 24 ======
+    if "24" in q or "عيار 24" in q:
+        return PRODUCT_MAP["Smoked Herring 24 Kerat"]
+
+    # ====== 6. الفسيخ ======
+    if "فسيخ" in q:
+        return (
+            PRODUCT_MAP["Salted Mullet without Bacteria"]
+            + "\n\n"
+            + PRODUCT_MAP["Salted Mullet with Roe"]
+        )
+
+    # ====== 7. الرنجة ======
+    if "رنجه" in q or "رنجة" in q:
+        return (
+            PRODUCT_MAP["Smoked Herring"]
+            + "\n\n"
+            + PRODUCT_MAP["Smoked Herring 24 Kerat"]
+        )
+
+    # ====== 8. البحث المباشر في أسماء المنتجات ======
+    for key in PRODUCT_MAP:
+        if normalize(key) in q:
+            return PRODUCT_MAP[key]
+
+    # ====== 9. رد افتراضي ======
+    return "ممكن حضرتك توضح استفسارك أكتر؟"
 
 # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
@@ -210,4 +251,5 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
