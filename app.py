@@ -12,38 +12,16 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 DATA_INFO = "رنجة أبو السيد: مصنع رنجة وفسيخ، أسعارنا: رنجة 200ج، فسيخ 460ج. المنيو: https://heyzine.com/flip-book/31946f16d5.html"
 
 # ================== AI LOGIC ==================
-def retry_with_pro(user_text):
-    # دي الخطة البديلة باستخدام موديل Pro المستقر
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
-    payload = {
-        "contents": [{
-            "parts": [{
-                "text": f"أنت خدمة عملاء رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بمصرية: {user_text}"
-            }]
-        }]
-    }
-    try:
-        r = requests.post(url, json=payload, timeout=15)
-        res_data = r.json()
-        if "candidates" in res_data:
-            return res_data["candidates"][0]["content"]["parts"][0]["text"]
-        return "يا مساء الفل! نورتنا في رنجة أبو السيد، أؤمرني أساعدك إزاي؟"
-    except:
-        return "منورنا يا غالي! تحت أمرك في أي استفسار."
-
 def get_ai_answer(user_text):
     if not GEMINI_API_KEY:
-        return "⚠️ المفتاح ناقص"
+        return "⚠️ المفتاح ناقص في إعدادات ريلواي"
 
-    # المحاولة الأولى بـ Flash 1.5
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    # هنستخدم رابط مستقر جداً
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
+    
     headers = {'Content-Type': 'application/json'}
     payload = {
-        "contents": [{
-            "parts": [{
-                "text": f"أنت خدمة عملاء رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بمصرية: {user_text}"
-            }]
-        }]
+        "contents": [{"parts": [{"text": f"رد بلهجة مصرية: {user_text}"}]}]
     }
 
     try:
@@ -53,14 +31,17 @@ def get_ai_answer(user_text):
         if "candidates" in res_data:
             return res_data["candidates"][0]["content"]["parts"][0]["text"]
         
-        # لو Flash فشل (زي الـ 404 اللي فاتت)، جرب Pro فوراً
+        # لو في خطأ، هيظهرلك كود الخطأ الحقيقي في فيسبوك
+        elif "error" in res_data:
+            msg = res_data["error"].get("message", "")
+            status = res_data["error"].get("status", "")
+            return f"❌ جوجل بيقول: {status} - {msg[:50]}"
+        
         else:
-            print("Flash failed, retrying with Pro...")
-            return retry_with_pro(user_text)
+            return "❌ جوجل رد رد فاضي"
 
     except Exception as e:
-        # لو حصل أي خطأ في الاتصال، جرب Pro برضه كحل أخير
-        return retry_with_pro(user_text)
+        return f"⚠️ مشكلة اتصال: {str(e)[:30]}"
         # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -98,6 +79,7 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
 
