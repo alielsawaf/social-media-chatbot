@@ -1,6 +1,6 @@
 flask
 requests
 fuzzywuzzy
-python-Levenshtein
+google-genai
+python-dotenv
 gunicorn
-google-generativeai
