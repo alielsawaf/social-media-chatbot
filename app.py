@@ -16,29 +16,30 @@ def get_ai_answer(user_text):
     if not GEMINI_API_KEY:
         return "⚠️ المفتاح ناقص"
 
-    # استخدمنا gemini-pro لأنه الموديل اللي مستحيل جوجل تقول عليه "Not Found" في أمريكا
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
+    # ده الرابط اللي بيشغل النسخ الجديدة gemini-1.5-flash
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
     headers = {'Content-Type': 'application/json'}
     payload = {
-        "contents": [{"parts": [{"text": f"أنت خدمة عملاء رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بمصرية: {user_text}"}]}]
+        "contents": [{
+            "parts": [{
+                "text": f"أنت خدمة عملاء رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بمصرية عامية: {user_text}"
+            }]
+        }]
     }
 
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=20)
+        response = requests.post(url, json=payload, headers=headers, timeout=15)
         res_data = response.json()
 
         if "candidates" in res_data:
             return res_data["candidates"][0]["content"]["parts"][0]["text"]
         
-        # لو الموديل ده برضه قاله عليه Not Found، يبقى المشكلة في الـ Key 100%
-        elif "error" in res_data:
-            err_msg = res_data["error"].get("message", "")
-            return f"❌ جوجل لسه معترض: {err_msg[:50]}"
-        
-        return "يا مساء الفل! نورتنا في رنجة أبو السيد."
+        # لو لسه فيه مشكلة، ده عشان نعرف لو فيه حاجة تانية غير الـ Not Found
+        return f"❌ جوجل رد بـ: {res_data.get('error', {}).get('message', 'Unknown Error')}"
+
     except Exception as e:
-        return "منورنا يا غالي! أؤمرني أساعدك إزاي؟"
+        return "يا مساء الورد! نورت رنجة أبو السيد."
         # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -76,6 +77,7 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
 
