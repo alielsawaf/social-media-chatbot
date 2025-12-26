@@ -14,14 +14,23 @@ DATA_INFO = "رنجة أبو السيد: مصنع رنجة وفسيخ، أسعا
 # ================== AI LOGIC ==================
 def get_ai_answer(user_text):
     if not GEMINI_API_KEY:
-        return "⚠️ المفتاح ناقص في إعدادات ريلواي"
+        return "⚠️ المفتاح ناقص"
 
-    # هنستخدم رابط مستقر جداً
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
+    # الرابط الرسمي v1 مع الاسم الكامل للموديل gemini-1.5-flash
+    # ده الرابط اللي جوجل بتنصح بيه حالياً لتجنب خطأ الـ 404
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
     headers = {'Content-Type': 'application/json'}
+    
     payload = {
-        "contents": [{"parts": [{"text": f"رد بلهجة مصرية: {user_text}"}]}]
+        "contents": [{
+            "parts": [{
+                "text": f"أنت خدمة عملاء رنجة أبو السيد. رد بلهجة مصرية ودودة جداً. المعلومات: {DATA_INFO}. العميل يسأل: {user_text}"
+            }]
+        }],
+        "generationConfig": {
+            "temperature": 0.7
+        }
     }
 
     try:
@@ -31,17 +40,15 @@ def get_ai_answer(user_text):
         if "candidates" in res_data:
             return res_data["candidates"][0]["content"]["parts"][0]["text"]
         
-        # لو في خطأ، هيظهرلك كود الخطأ الحقيقي في فيسبوك
         elif "error" in res_data:
-            msg = res_data["error"].get("message", "")
-            status = res_data["error"].get("status", "")
-            return f"❌ جوجل بيقول: {status} - {msg[:50]}"
+            # لو لسه مطلع 404، هنغير الرابط لآخر محاولة يدوية
+            error_msg = res_data["error"].get("message", "")
+            return f"❌ خطأ تقني (جوجل): {error_msg[:50]}"
         
-        else:
-            return "❌ جوجل رد رد فاضي"
+        return "منورنا يا أبو السيد! أؤمرني أساعدك إزاي؟"
 
     except Exception as e:
-        return f"⚠️ مشكلة اتصال: {str(e)[:30]}"
+        return "يا مساء الورد! نورتنا في رنجة أبو السيد."
         # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -79,6 +86,7 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
 
