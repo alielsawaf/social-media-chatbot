@@ -16,26 +16,27 @@ def get_ai_answer(user_text):
     if not GEMINI_API_KEY:
         return "⚠️ خطأ: GEMINI_API_KEY مش موجود في إعدادات Railway!"
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    # التغيير هنا: خليناها v1 بدل v1beta
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    
     headers = {'Content-Type': 'application/json'}
     payload = {
         "contents": [{
-            "parts": [{"text": f"أنت خدمة عملاء رنجة أبو السيد. رد بلهجة مصرية من المعلومات دي: {DATA_INFO}\nالعميل: {user_text}"}]
+            "parts": [{"text": f"أنت خدمة عملاء رنجة أبو السيد. رد بلهجة مصرية ودودة جداً من المعلومات دي فقط: {DATA_INFO}\nالعميل بيقول: {user_text}"}]
         }]
     }
 
     try:
-        # تحديد وقت معين للرد (Timeout) عشان السيرفر ميعلقش
         response = requests.post(url, json=payload, headers=headers, timeout=10)
         res_data = response.json()
         
         if "candidates" in res_data:
             return res_data['candidates'][0]['content']['parts'][0]['text']
         else:
-            return f"❌ جوجل رد بخطأ: {res_data.get('error', {}).get('message', 'خطأ غير معروف')}"
+            # لو لسه في مشكلة، ابعت نص الرد عشان نشوفه
+            return f"❌ رد جوجل: {res_data.get('error', {}).get('message', 'خطأ غير معروف')}"
     except Exception as e:
-        return f"⚠️ فشل الاتصال بجوجل: {str(e)[:50]}"
-
+        return f"⚠️ فشل الاتصال: {str(e)[:50]}"
 # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -73,3 +74,4 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
