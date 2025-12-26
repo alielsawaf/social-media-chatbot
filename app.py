@@ -14,22 +14,14 @@ DATA_INFO = "رنجة أبو السيد: مصنع رنجة وفسيخ، أسعا
 # ================== AI LOGIC ==================
 def get_ai_answer(user_text):
     if not GEMINI_API_KEY:
-        return "⚠️ المفتاح ناقص في إعدادات ريلواي"
+        return "⚠️ المفتاح ناقص"
 
-    # الرابط ده في أمريكا بيشتغل 100% وبسرعة البرق
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    # استخدمنا gemini-pro لأنه الموديل اللي مستحيل جوجل تقول عليه "Not Found" في أمريكا
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
     
     headers = {'Content-Type': 'application/json'}
     payload = {
-        "contents": [{
-            "parts": [{
-                "text": f"أنت خدمة عملاء رنجة أبو السيد. رد بلهجة مصرية عامية ودودة. المعلومات: {DATA_INFO}. العميل يسأل: {user_text}"
-            }]
-        }],
-        "generationConfig": {
-            "temperature": 0.8,
-            "maxOutputTokens": 300
-        }
+        "contents": [{"parts": [{"text": f"أنت خدمة عملاء رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بمصرية: {user_text}"}]}]
     }
 
     try:
@@ -39,16 +31,14 @@ def get_ai_answer(user_text):
         if "candidates" in res_data:
             return res_data["candidates"][0]["content"]["parts"][0]["text"]
         
-        # لو في رسالة خطأ تانية ظهرت (نادر جداً في أمريكا)
+        # لو الموديل ده برضه قاله عليه Not Found، يبقى المشكلة في الـ Key 100%
         elif "error" in res_data:
-            error_status = res_data["error"].get("status")
-            error_msg = res_data["error"].get("message")
-            return f"❌ خطأ من جوجل: {error_status} - {error_msg[:50]}"
+            err_msg = res_data["error"].get("message", "")
+            return f"❌ جوجل لسه معترض: {err_msg[:50]}"
         
-        return "يا مساء الورد! نورت رنجة أبو السيد، تحت أمرك في أي استفسار."
-
+        return "يا مساء الفل! نورتنا في رنجة أبو السيد."
     except Exception as e:
-        return f"⚠️ عذراً، حاول مرة تانية: {str(e)[:30]}"
+        return "منورنا يا غالي! أؤمرني أساعدك إزاي؟"
         # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -86,6 +76,7 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
 
