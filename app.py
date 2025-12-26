@@ -14,67 +14,42 @@ DATA_INFO = "رنجة أبو السيد: مصنع رنجة وفسيخ، أسعا
 # ================== AI LOGIC ==================
 def get_ai_answer(user_text):
     if not GEMINI_API_KEY:
-        return "⚠️ خطأ: المفتاح غير مضبوط"
+        return "⚠️ المفتاح غير موجود في الإعدادات"
 
-    # ده الرابط المستقر لمناداة موديل Pro (النسخة المجانية)
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
+    # استخدام رابط الـ API المستقر v1
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
     headers = {'Content-Type': 'application/json'}
+    
+    # تبسيط الـ Payload لأقصى درجة ممكنة لضمان القبول
     payload = {
         "contents": [{
-            "parts": [{"text": f"أنت مساعد ذكي لمصنع رنجة أبو السيد. رد بمصرية عامية. المعلومات: {DATA_INFO}\nالعميل: {user_text}"}]
+            "parts": [{
+                "text": f"أنت موظف استقبال في رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بمصرية عامية على: {user_text}"
+            }]
         }]
     }
 
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        response = requests.post(url, json=payload, headers=headers, timeout=15)
         res_data = response.json()
-        
-        if "candidates" in res_data:
-            return res_data['candidates'][0]['content']['parts'][0]['text']
-        else:
-            # لو الموديل Pro لسه فيه مشكلة في المنطقة، هنجرب Flash بس بالرابط الصحيح
-            return retry_with_flash(user_text)
-            
-    except Exception as e:
-        return "أهلاً بك في رنجة أبو السيد! نورتنا."
 
-# دالة احتياطية لو Pro رفض يشتغل
-def retry_with_flash(user_text):
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-    
-    full_prompt = f"أنت موظف استقبال في رنجة أبو السيد. رد بلهجة مصرية. {DATA_INFO}\nالعميل يسأل: {user_text}"
-    
-    payload = {
-        "contents": [{"parts": [{"text": full_prompt}]}],
-        "safetySettings": [
-            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
-        ],
-        "generationConfig": {
-            "temperature": 0.9,
-            "maxOutputTokens": 300
-        }
-    }
-    
-    try:
-        r = requests.post(url, json=payload, timeout=10)
-        data = r.json()
+        # حالة النجاح
+        if "candidates" in res_data and len(res_data["candidates"]) > 0:
+            return res_data["candidates"][0]["content"]["parts"][0]["text"]
         
-        # استخراج النص بذكاء
-        if "candidates" in data and "content" in data["candidates"][0]:
-            return data["candidates"][0]["content"]["parts"][0]["text"]
+        # حالة وجود خطأ من جوجل (هنا هنعرف السبب)
+        elif "error" in res_data:
+            error_code = res_data["error"].get("code")
+            error_status = res_data["error"].get("status")
+            error_msg = res_data["error"].get("message")
+            return f"❌ جوجل رفض الطلب: {error_status} ({error_code}). السبب: {error_msg[:50]}"
+        
         else:
-            # لو جوجل رفض يرد لأي سبب، هنخليه يرد يدوي بس بذكاء
-            if "بكام" in user_text or "سعر" in user_text:
-                return "الرنجة عندنا بـ 200 ج والفسيخ بـ 460 ج يا فندم. نورتنا!"
-            if "منيو" in user_text:
-                return "اتفضل منيو رنجة أبو السيد من هنا: https://heyzine.com/flip-book/31946f16d5.html"
-            return "يا مساء الفل! نورت رنجة أبو السيد، أؤمرني أساعدك إزاي؟"
-    except:
-        return "يا مساء الورد! نورتنا، تحت أمرك في أي استفسار."
+            return "❌ رد جوجل جاء فارغاً (Safety Filters)."
+
+    except Exception as e:
+        return f"⚠️ فشل في الاتصال بالـ AI: {str(e)[:50]}"
         # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -112,6 +87,7 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
 
