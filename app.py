@@ -11,8 +11,13 @@ VERIFY_TOKEN = os.environ.get("VERIFY_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 # إعداد الذكاء الاصطناعي
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+# الطريقة الصحيحة للمكتبة الجديدة (بدل genai.configure)
+if GEMINI_API_KEY:
+    client = genai.Client(api_key=GEMINI_API_KEY)
+else:
+    print("برجاء إضافة GEMINI_API_KEY في إعدادات Railway")
+#genai.configure(api_key=GEMINI_API_KEY)
+#model = genai.GenerativeModel('gemini-1.5-flash')
 
 # ================== DATA ==================
 FAQ_MAP = {
@@ -211,21 +216,16 @@ def get_answer(text):
 
 def get_ai_answer(user_text):
     try:
-        # تأكد إن الـ API Key واصل فعلاً
-        if not GEMINI_API_KEY:
-            return "يا فندم نورتنا! تحب تعرف أسعار الرنجة ولا الفسيخ؟ (خطأ في المفتاح)"
-            
-        prompt = f"{SYSTEM_INSTRUCTION}\nالعميل بيقول: {user_text}\nالرد المساعد:"
-        response = model.generate_content(prompt)
-        
-        if response and response.text:
-            return response.text
-        else:
-            return "منورنا في رنجة أبو السيد! أقدر أساعدك إزاي؟"
+        # دي الطريقة الجديدة لاستخراج الرد
+        response = client.models.generate_content(
+            model="gemini-1.5-flash", 
+            contents=user_text,
+            config={'system_instruction': SYSTEM_INSTRUCTION}
+        )
+        return response.text
     except Exception as e:
-        # السطر ده هيظهر في الـ Console Logs بتاعة Railway
         print(f"DEBUG: AI Error -> {e}")
-        return "منورنا يا غالي! ممكن توضح سؤالك أكتر؟"
+        return "منورنا في رنجة أبو السيد! ممكن توضح سؤالك أكتر؟"
 # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -253,6 +253,7 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
 
