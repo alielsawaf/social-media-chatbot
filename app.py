@@ -14,41 +14,41 @@ DATA_INFO = "رنجة أبو السيد: مصنع رنجة وفسيخ، أسعا
 # ================== AI LOGIC ==================
 def get_ai_answer(user_text):
     if not GEMINI_API_KEY:
-        return "⚠️ المفتاح ناقص"
+        return "⚠️ المفتاح ناقص في إعدادات ريلواي"
 
-    # الرابط الرسمي v1 مع الاسم الكامل للموديل gemini-1.5-flash
-    # ده الرابط اللي جوجل بتنصح بيه حالياً لتجنب خطأ الـ 404
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    # الرابط ده في أمريكا بيشتغل 100% وبسرعة البرق
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
     headers = {'Content-Type': 'application/json'}
-    
     payload = {
         "contents": [{
             "parts": [{
-                "text": f"أنت خدمة عملاء رنجة أبو السيد. رد بلهجة مصرية ودودة جداً. المعلومات: {DATA_INFO}. العميل يسأل: {user_text}"
+                "text": f"أنت خدمة عملاء رنجة أبو السيد. رد بلهجة مصرية عامية ودودة. المعلومات: {DATA_INFO}. العميل يسأل: {user_text}"
             }]
         }],
         "generationConfig": {
-            "temperature": 0.7
+            "temperature": 0.8,
+            "maxOutputTokens": 300
         }
     }
 
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=15)
+        response = requests.post(url, json=payload, headers=headers, timeout=20)
         res_data = response.json()
 
         if "candidates" in res_data:
             return res_data["candidates"][0]["content"]["parts"][0]["text"]
         
+        # لو في رسالة خطأ تانية ظهرت (نادر جداً في أمريكا)
         elif "error" in res_data:
-            # لو لسه مطلع 404، هنغير الرابط لآخر محاولة يدوية
-            error_msg = res_data["error"].get("message", "")
-            return f"❌ خطأ تقني (جوجل): {error_msg[:50]}"
+            error_status = res_data["error"].get("status")
+            error_msg = res_data["error"].get("message")
+            return f"❌ خطأ من جوجل: {error_status} - {error_msg[:50]}"
         
-        return "منورنا يا أبو السيد! أؤمرني أساعدك إزاي؟"
+        return "يا مساء الورد! نورت رنجة أبو السيد، تحت أمرك في أي استفسار."
 
     except Exception as e:
-        return "يا مساء الورد! نورتنا في رنجة أبو السيد."
+        return f"⚠️ عذراً، حاول مرة تانية: {str(e)[:30]}"
         # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -86,6 +86,7 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
 
