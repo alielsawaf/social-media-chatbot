@@ -27,29 +27,31 @@ DATA_INFO = """
 # ================== LOGIC ==================
 def get_answer(user_text):
     try:
-        # محاولة تشغيل الـ AI
+        # تغيير الموديل لنسخة أحدث وأكثر استقراراً
+        model = genai.GenerativeModel('gemini-1.5-flash-latest') 
+        
         prompt = f"أنت خدمة عملاء رنجة أبو السيد، رد بلهجة مصرية ودودة من المعلومات دي فقط: {DATA_INFO}\nالعميل بيقول: {user_text}"
+        
         response = model.generate_content(prompt)
         
         if response and response.text:
             return response.text
-        return "الـ AI اشتغل بس الرد فاضي، اتأكد من الـ Safety Settings."
+        else:
+            return "نورتنا يا فندم! أقدر أساعدك إزاي؟"
 
     except Exception as e:
-        # السطر ده هو "المخبر" بتاعنا
         error_details = str(e)
-        print(f"DEBUG ERROR: {error_details}")
+        # لو لسه في مشكلة 404، جرب نغير الموديل لـ gemini-pro
+        if "404" in error_details:
+             try:
+                 alt_model = genai.GenerativeModel('gemini-pro')
+                 res = alt_model.generate_content(user_text)
+                 return res.text
+             except:
+                 return "⚠️ عذراً، الموديل غير متاح حالياً على هذا السيرفر."
         
-        # لو المشكلة في الـ Key أو المنطقة هيبان هنا
-        if "403" in error_details:
-            return "❌ خطأ 403: جوجل قافلة الـ API في منطقة السيرفر ده (غالباً Railway Europe)."
-        elif "400" in error_details:
-            return "❌ خطأ 400: في مشكلة في الـ API Key أو الطلب."
-        
-        # ابعت الخطأ زي ما هو عشان نعرفه
-        return f"⚠️ الـ AI مش شغال بسبب: {error_details[:100]}"
-
-# ================== WEBHOOK ==================
+        return f"⚠️ الـ AI واجه خطأ: {error_details[:50]}"
+        # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
     if request.args.get("hub.verify_token") == VERIFY_TOKEN:
@@ -76,3 +78,4 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
