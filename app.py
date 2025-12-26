@@ -16,14 +16,14 @@ def get_ai_answer(user_text):
     if not GEMINI_API_KEY:
         return "⚠️ المفتاح ناقص"
 
-    # ده الرابط اللي بيشغل النسخ الجديدة gemini-1.5-flash
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    # جربنا gemini-1.0-pro لأنه الموديل الأساسي اللي مبيختفيش
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key={GEMINI_API_KEY}"
     
     headers = {'Content-Type': 'application/json'}
     payload = {
         "contents": [{
             "parts": [{
-                "text": f"أنت خدمة عملاء رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بمصرية عامية: {user_text}"
+                "text": f"أنت خدمة عملاء رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بمصرية: {user_text}"
             }]
         }]
     }
@@ -35,8 +35,8 @@ def get_ai_answer(user_text):
         if "candidates" in res_data:
             return res_data["candidates"][0]["content"]["parts"][0]["text"]
         
-        # لو لسه فيه مشكلة، ده عشان نعرف لو فيه حاجة تانية غير الـ Not Found
-        return f"❌ جوجل رد بـ: {res_data.get('error', {}).get('message', 'Unknown Error')}"
+        # لو لسه معترض، هيرجع لنا الرسالة عشان نعرف لو فيه موديل تاني
+        return f"❌ جوجل لسه بيقول: {res_data.get('error', {}).get('message', 'خطأ غير معروف')}"
 
     except Exception as e:
         return "يا مساء الورد! نورت رنجة أبو السيد."
@@ -77,6 +77,7 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
 
