@@ -25,37 +25,30 @@ def get_ai_answer(user_text):
     if not GEMINI_API_KEY:
         return "⚠️ المفتاح ناقص"
 
-    # استخدام الموديل اللي نجح معاك في الفحص اللي فات
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
-    headers = {'Content-Type': 'application/json'}
-    
-    # الطلب في أبسط صورة (Simple Prompt)
     payload = {
-        "contents": [{
-            "parts": [{"text": f"جاوب بلهجة مصرية كخدمة عملاء لمصنع رنجة أبو السيد. المعلومات: {DATA_INFO}\nالسؤال: {user_text}"}]
-        }]
+        "contents": [{"parts": [{"text": f"أنت خدمة عملاء رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بمصرية: {user_text}"}]}]
     }
 
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=20)
+        response = requests.post(url, json=payload, timeout=15)
         res_data = response.json()
 
-        # محاولة استخراج النص
-        if "candidates" in res_data and "content" in res_data["candidates"][0]:
+        if "candidates" in res_data:
             return res_data["candidates"][0]["content"]["parts"][0]["text"]
         
-        # لو جوجل رفض يرد (Fallback ذكي)
-        else:
-            if "بكام" in user_text or "سعر" in user_text:
-                return "يا فندم الرنجة عندنا بـ 200ج والفسيخ بـ 460ج، تحب تطلب إيه؟"
-            elif "منيو" in user_text:
-                return "اتفضل المنيو يا فندم: https://heyzine.com/flip-book/31946f16d5.html"
-            else:
-                return "يا مساء الورد! نورت رنجة أبو السيد، أؤمرني أساعدك إزاي؟"
+        # أهم حتة: لو الـ AI رفض، هيقولك السبب الحقيقي عشان نحله
+        elif "error" in res_data:
+            return f"❌ AI Error: {res_data['error'].get('message', 'Unknown')[:50]}"
+        
+        # لو مفيش رد خالص (Fallback)
+        if "بكام" in user_text or "سعر" in user_text:
+            return "يا فندم الرنجة عندنا بـ 200ج والفسيخ بـ 460ج، تحب تطلب إيه؟"
+        return "يا مساء الفل! نورت رنجة أبو السيد."
 
     except Exception as e:
-        return "منورنا يا غالي! أؤمرني أساعدك إزاي؟"
+        return f"⚠️ Connection Error: {str(e)[:20]}"
         # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -93,4 +86,5 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
