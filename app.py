@@ -41,31 +41,40 @@ def get_ai_answer(user_text):
 
 # دالة احتياطية لو Pro رفض يشتغل
 def retry_with_flash(user_text):
-    # الرابط اللي أثبت نجاحه معاك
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
-    # تأكد إن التعليمات والمعلومات بتروح في كل مرة
-    full_prompt = f"أنت خدمة عملاء مصنع رنجة أبو السيد. رد بلهجة مصرية. المعلومات: {DATA_INFO}. العميل بيقول: {user_text}"
+    full_prompt = f"أنت موظف استقبال في رنجة أبو السيد. رد بلهجة مصرية. {DATA_INFO}\nالعميل يسأل: {user_text}"
     
     payload = {
-        "contents": [{
-            "parts": [{"text": full_prompt}]
-        }],
+        "contents": [{"parts": [{"text": full_prompt}]}],
+        "safetySettings": [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+        ],
         "generationConfig": {
-            "temperature": 0.8, # عشان يخلي الكلام طبيعي مش آلي
-            "maxOutputTokens": 250
+            "temperature": 0.9,
+            "maxOutputTokens": 300
         }
     }
     
     try:
         r = requests.post(url, json=payload, timeout=10)
         data = r.json()
-        if "candidates" in data:
-            return data['candidates'][0]['content']['parts'][0]['text']
+        
+        # استخراج النص بذكاء
+        if "candidates" in data and "content" in data["candidates"][0]:
+            return data["candidates"][0]["content"]["parts"][0]["text"]
         else:
-            return "يا مساء الورد! نورتنا في رنجة أبو السيد، تحت أمرك في أي استفسار عن الأسعار أو المنيو."
+            # لو جوجل رفض يرد لأي سبب، هنخليه يرد يدوي بس بذكاء
+            if "بكام" in user_text or "سعر" in user_text:
+                return "الرنجة عندنا بـ 200 ج والفسيخ بـ 460 ج يا فندم. نورتنا!"
+            if "منيو" in user_text:
+                return "اتفضل منيو رنجة أبو السيد من هنا: https://heyzine.com/flip-book/31946f16d5.html"
+            return "يا مساء الفل! نورت رنجة أبو السيد، أؤمرني أساعدك إزاي؟"
     except:
-        return "منورنا يا غالي! أؤمرني أساعدك إزاي؟"
+        return "يا مساء الورد! نورتنا، تحت أمرك في أي استفسار."
         # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -103,6 +112,7 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
 
