@@ -1,15 +1,19 @@
 from flask import Flask, request
 import requests
 import os
+import google.generativeai as genai
 
 app = Flask(__name__)
 
-# ================== CONFIG ==================
-PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD"
-VERIFY_TOKEN = "my_secret_token"
+# ================== CONFIG (Railway Variables) ==================
+# التوكنز دي هيتم قراءتها من إعدادات Railway Variables للأمان
+PAGE_ACCESS_TOKEN = os.environ.get("PAGE_ACCESS_TOKEN")
+VERIFY_TOKEN = os.environ.get("VERIFY_TOKEN")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-# ================== CONTEXT MEMORY ==================
-LAST_TOPIC = {}  # user_id -> last topic
+# إعداد الذكاء الاصطناعي
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 # ================== DATA ==================
 FAQ_MAP = {
@@ -92,8 +96,6 @@ FAQ_MAP = {
   "نوع السلمون للطهي": "السلمون الفيليه الني."
 }
 
-
-# 2. أسعار المنتجات (يتم الرد بها إذا لم يوجد سؤال عام)
 PRODUCT_MAP = {
   "Smoked Herring with Roe": "💰 سعر رنجة مدخنة مبطرخة مرملة:\nالوزن: 1 KG\nالسعر: 250 EGP ✨",
 
@@ -162,93 +164,48 @@ PRODUCT_MAP = {
   "Salted Mullet with Roe": "💰 سعر فسيخ مبطرخ بدون بكتيريا:\nالوزن: 1 KG\nالسعر: 560 EGP ✨"
 }
 
+# تعليمات الـ AI (البرومبت)
+SYSTEM_INSTRUCTION = f"""
+أنت مساعد خدمة عملاء ذكي لمصنع "رنجة أبو السيد". 
+مهمتك الرد على استفسارات الزبائن بلهجة مصرية ودودة جداً واستخدم كلمة يافندم دائما في كل الردود وممنوع التعصب او الاستهتار نهائي بكلام العميل وبأسلوب "احترافي".
+استخدم المعلومات التالية فقط للرد:
+1. الأسئلة الشائعة: {str(FAQ_MAP)}
+2. قائمة الأسعار: {str(PRODUCT_MAP)}
+
+قواعد هامة:
+- إذا سأل العميل عن سعر، ابحث عنه في القائمة وأعطه السعر والوزن.
+- إذا لم تجد الإجابة في المعلومات، اطلب منه بذكاء التواصل مع الإدارة على 01211113882.
+- استخدم الإيموجي المناسب (🐟, 💰, ✨).
+- لا تخترع أسعاراً من عندك أبداً.
+"""
+
 # ================== LOGIC ==================
 def normalize(text):
-    return (
-        text.lower()
-        .replace("ة", "ه")
-        .replace("أ", "ا")
-        .replace("إ", "ا")
-        .replace("آ", "ا")
-        .strip()
-    )
+    return text.lower().replace("ة", "ه").replace("أ", "ا").replace("إ", "ا").replace("آ", "ا").strip()
 
+def get_ai_answer(user_text):
+    try:
+        prompt = f"{SYSTEM_INSTRUCTION}\nالعميل يقول: {user_text}\nالرد المساعد:"
+        response = model.generate_content(prompt)
+        return response.text
+    except:
+        return "منورنا في رنجة أبو السيد! ممكن توضح سؤالك أكتر عشان أقدر أساعدك؟"
 
-def get_answer(text, user_id=None):
+def get_answer(text):
     q = normalize(text)
+    
+    # الردود السريعة (بدون AI لتوفير الوقت والاحترافية)
+    if any(w in q for w in ["اهلا", "سلام", "مرحبا", "ازيك"]):
+        return "أهلاً بك في رنجة أبو السيد 👋 نورتنا.. أساعد حضرتك ازاي؟"
+    
+    if "منيو" in q:
+        return FAQ_MAP["منيو"]
 
-    # كلمات الموافقة
-    confirm_words = ["اه", "ايوه", "ياريت", "تمام", "اوكي", "اوك", "ok"]
-
-    if q in confirm_words and user_id in LAST_TOPIC:
-        topic = LAST_TOPIC[user_id]
-
-        if topic == "tuna":
-            return "💰 تونة أبو السيد يلوفين – جاهزة للأكل.\nتحب تعرف السعر ولا تفاصيل أكتر؟"
-
-        if topic == "herring":
-            return (
-                f"💰 تشكيلة الرنجة:\n"
-                f"- {PRODUCT_MAP['Smoked Herring']}\n"
-                f"- {PRODUCT_MAP['Smoked Herring 24 Kerat']}"
-            )
-
-        if topic == "feseekh":
-            return (
-                f"💰 أسعار الفسيخ:\n"
-                f"- {PRODUCT_MAP['Salted Mullet without Bacteria']}\n"
-                f"- {PRODUCT_MAP['Salted Mullet with Roe']}"
-            )
-
-    # فاكيوم
-    if q in ["فاكيوم", "يعني ايه فاكيوم"]:
-        LAST_TOPIC[user_id] = "vacuum"
-        return FAQ_MAP["فاكيوم"]
-
-    # شكاوى
-    if "دود" in q or "طفيليات" in q:
+    if any(w in q for w in ["دود", "مدود", "طفيليات"]):
         return FAQ_MAP["الرنجة فيها دود"]
 
-    if "دم" in q:
-        return FAQ_MAP["ليه الفسيخ بيكون في دم"]
-
-    # تونة
-    if "تون" in q or "تونه" in q:
-        LAST_TOPIC[user_id] = "tuna"
-
-        if any(w in q for w in ["مصري", "مستور", "مستورده", "منين"]):
-            return FAQ_MAP["التونة مستوردة ولا مصري"]
-
-        if any(w in q for w in ["فرق", "ابيض", "احمر", "بيضا", "حمرا"]):
-            return FAQ_MAP["الفرق بين لحم التونة الابيض والاحمر"]
-
-        return "💰 تونة أبو السيد يلوفين – جاهزة للأكل. تحب تعرف السعر ولا تفاصيل أكتر؟"
-
-    # فسيخ
-    if "فسيخ" in q:
-        LAST_TOPIC[user_id] = "feseekh"
-
-        if "بنجر" in q:
-            return PRODUCT_MAP["Salted Grey Mullet with Beet Sauce"]
-
-        return (
-            f"💰 أسعار الفسيخ:\n"
-            f"- {PRODUCT_MAP['Salted Mullet without Bacteria']}\n"
-            f"- {PRODUCT_MAP['Salted Mullet with Roe']}"
-        )
-
-    # رنجة
-    if "رنج" in q:
-        LAST_TOPIC[user_id] = "herring"
-        return (
-            f"💰 تشكيلة الرنجة:\n"
-            f"- {PRODUCT_MAP['Smoked Herring']}\n"
-            f"- {PRODUCT_MAP['Smoked Herring 24 Kerat']}\n"
-            f"- {PRODUCT_MAP['Smoked Herring in Vacuum Packing']}\n"
-            f"- {PRODUCT_MAP['Gutted Smoked Vacuumed Herring']}"
-        )
-
-    return "ممكن توضحلي أكتر تحب تعرف إيه؟ (سعر – فرق – منيو)"
+    # لأي سؤال آخر.. استخدم الذكاء الاصطناعي
+    return get_ai_answer(text)
 
 # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
@@ -256,7 +213,6 @@ def verify():
     if request.args.get("hub.verify_token") == VERIFY_TOKEN:
         return request.args.get("hub.challenge")
     return "failed", 403
-
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -267,16 +223,14 @@ def webhook():
                 sender = ev["sender"]["id"]
                 if "message" in ev and "text" in ev["message"]:
                     msg_text = ev["message"]["text"]
-                    reply = get_answer(msg_text, sender)
+                    reply = get_answer(msg_text)
                     send_message(sender, reply)
     return "ok", 200
-
 
 def send_message(user_id, text):
     url = f"https://graph.facebook.com/v12.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
     payload = {"recipient": {"id": user_id}, "message": {"text": text}}
     requests.post(url, json=payload)
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
