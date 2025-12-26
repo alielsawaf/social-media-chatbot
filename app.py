@@ -16,50 +16,37 @@ def get_ai_answer(user_text):
     if not GEMINI_API_KEY:
         return "⚠️ المفتاح ناقص"
 
-    # الخطوة 1: هنسأل جوجل عن الموديلات المتاحة (زي ما عملنا ونجحت)
-    list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
+    # استخدام الموديل اللي نجح معاك في الفحص اللي فات
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
     
-    try:
-        models_res = requests.get(list_url, timeout=10).json()
-        available_models = [m['name'] for m in models_res.get('models', []) if 'generateContent' in m.get('supportedGenerationMethods', [])]
-        
-        # هنستخدم الموديل اللي اشتغل معاك المرة اللي فاتت
-        selected_model = ""
-        for m in available_models:
-            if "gemini-pro-latest" in m or "gemini-1.5" in m or "gemini-pro" in m:
-                selected_model = m
-                break
-        
-        if not selected_model:
-            return "❌ جوجل مش مفعّل أي موديلات حالياً."
+    headers = {'Content-Type': 'application/json'}
+    
+    # الطلب في أبسط صورة (Simple Prompt)
+    payload = {
+        "contents": [{
+            "parts": [{"text": f"جاوب بلهجة مصرية كخدمة عملاء لمصنع رنجة أبو السيد. المعلومات: {DATA_INFO}\nالسؤال: {user_text}"}]
+        }]
+    }
 
-        # الخطوة 2: إرسال الطلب مع تعطيل فلاتر الأمان (عشان ميرفضش الرد)
-        url = f"https://generativelanguage.googleapis.com/v1beta/{selected_model}:generateContent?key={GEMINI_API_KEY}"
-        
-        payload = {
-            "contents": [{
-                "parts": [{"text": f"أنت مساعد في مصنع رنجة أبو السيد. المعلومات: {DATA_INFO}\nالعميل: {user_text}\nرد باللهجة المصرية العامية."}]
-            }],
-            "safetySettings": [
-                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
-            ]
-        }
-        
-        response = requests.post(url, json=payload, timeout=20)
+    try:
+        response = requests.post(url, json=payload, headers=headers, timeout=20)
         res_data = response.json()
 
+        # محاولة استخراج النص
         if "candidates" in res_data and "content" in res_data["candidates"][0]:
             return res_data["candidates"][0]["content"]["parts"][0]["text"]
+        
+        # لو جوجل رفض يرد (Fallback ذكي)
         else:
-            # لو رفض برضه، هنطلّع سبب الرفض بالظبط عشان نعرف هو خايف من إيه
-            reason = res_data.get("promptFeedback", {}).get("blockReason", "Unknown")
-            return f"❌ الموديل رفض الرد بسبب: {reason}"
+            if "بكام" in user_text or "سعر" in user_text:
+                return "يا فندم الرنجة عندنا بـ 200ج والفسيخ بـ 460ج، تحب تطلب إيه؟"
+            elif "منيو" in user_text:
+                return "اتفضل المنيو يا فندم: https://heyzine.com/flip-book/31946f16d5.html"
+            else:
+                return "يا مساء الورد! نورت رنجة أبو السيد، أؤمرني أساعدك إزاي؟"
 
     except Exception as e:
-        return "يا مساء الورد! أؤمرني أساعد حضرتك إزاي؟"
+        return "منورنا يا غالي! أؤمرني أساعدك إزاي؟"
         # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -97,6 +84,7 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
 
