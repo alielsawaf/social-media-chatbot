@@ -14,42 +14,56 @@ DATA_INFO = "رنجة أبو السيد: مصنع رنجة وفسيخ، أسعا
 # ================== AI LOGIC ==================
 def get_ai_answer(user_text):
     if not GEMINI_API_KEY:
-        return "⚠️ المفتاح غير موجود في الإعدادات"
+        return "⚠️ المفتاح غير موجود"
 
-    # استخدام رابط الـ API المستقر v1
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    # الرابط ده هو الوحيد اللي هيشغل Flash 1.5 حالياً مع Railway
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
     headers = {'Content-Type': 'application/json'}
     
-    # تبسيط الـ Payload لأقصى درجة ممكنة لضمان القبول
     payload = {
         "contents": [{
             "parts": [{
                 "text": f"أنت موظف استقبال في رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بمصرية عامية على: {user_text}"
             }]
-        }]
+        }],
+        "safetySettings": [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+        ]
     }
 
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=15)
+        # زودنا الـ timeout لـ 30 ثانية عشان ندي فرصة للـ AI يفكر
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
         res_data = response.json()
 
-        # حالة النجاح
         if "candidates" in res_data and len(res_data["candidates"]) > 0:
             return res_data["candidates"][0]["content"]["parts"][0]["text"]
         
-        # حالة وجود خطأ من جوجل (هنا هنعرف السبب)
         elif "error" in res_data:
-            error_code = res_data["error"].get("code")
-            error_status = res_data["error"].get("status")
-            error_msg = res_data["error"].get("message")
-            return f"❌ جوجل رفض الطلب: {error_status} ({error_code}). السبب: {error_msg[:50]}"
+            # لو لسه مطلع 404، هنجرب الموديل القديم gemini-pro أوتوماتيكياً
+            return retry_with_pro(user_text)
         
         else:
-            return "❌ رد جوجل جاء فارغاً (Safety Filters)."
+            return "منورنا في رنجة أبو السيد! أؤمرني أساعدك إزاي؟"
 
     except Exception as e:
-        return f"⚠️ فشل في الاتصال بالـ AI: {str(e)[:50]}"
+        return f"⚠️ عذراً، حاول مرة أخرى: {str(e)[:30]}"
+
+def retry_with_pro(user_text):
+    # الخطة البديلة بموديل Gemini Pro المستقر
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
+    payload = {
+        "contents": [{"parts": [{"text": f"رد بمصرية كخدمة عملاء رنجة أبو السيد: {user_text}"}]}]
+    }
+    try:
+        r = requests.post(url, json=payload, timeout=20)
+        return r.json()['candidates'][0]['content']['parts'][0]['text']
+    except:
+        return "يا مساء الفل! نورتنا في رنجة أبو السيد."
         # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -87,6 +101,7 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
 
