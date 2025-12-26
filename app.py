@@ -1,7 +1,6 @@
 from flask import Flask, request
 import requests
 import os
-#import google.generativeai as genai
 
 app = Flask(__name__)
 
@@ -10,11 +9,6 @@ PAGE_ACCESS_TOKEN = os.environ.get("PAGE_ACCESS_TOKEN")
 VERIFY_TOKEN = os.environ.get("VERIFY_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-# إعداد الجيمناي
-#genai.configure(api_key=GEMINI_API_KEY)
-#model = genai.GenerativeModel('gemini-1.5-flash')
-
-# الداتا اللي الـ AI هيعتمد عليها
 DATA_INFO = """
 رنجة أبو السيد:
 - سعر الرنجة: 200 ج، عيار 24: 300 ج.
@@ -24,48 +18,39 @@ DATA_INFO = """
 - المنيو: https://heyzine.com/flip-book/31946f16d5.html
 """
 
-# ================== LOGIC ==================
+# ================== AI LOGIC (Direct API) ==================
 def get_ai_answer(user_text):
-    # ده رابط الـ API المباشر من جوجل
+    # استخدام الرابط المباشر لجوجل بدون مكتبات
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-    
     headers = {'Content-Type': 'application/json'}
-    
     payload = {
         "contents": [{
-            "parts": [{"text": f"أنت خدمة عملاء رنجة أبو السيد. رد بلهجة مصرية من المعلومات دي: {DATA_INFO}\nالعميل: {user_text}"}]
-        }],
-        "generationConfig": {
-            "temperature": 0.7,
-            "maxOutputTokens": 200
-        }
+            "parts": [{"text": f"أنت خدمة عملاء رنجة أبو السيد. رد بلهجة مصرية ودودة جداً من المعلومات دي فقط: {DATA_INFO}\nالعميل بيقول: {user_text}"}]
+        }]
     }
 
     try:
         response = requests.post(url, json=payload, headers=headers)
         res_data = response.json()
-        
-        # استخراج النص من الرد
         if "candidates" in res_data:
             return res_data['candidates'][0]['content']['parts'][0]['text']
-        else:
-            print(f"API Error: {res_data}")
-            return "نورتنا يا غالي! أقدر أساعدك في الأسعار أو المنيو إزاي؟"
-            
+        return "أهلاً بك في رنجة أبو السيد! أقدر أساعدك إزاي؟"
     except Exception as e:
-        print(f"Request Error: {e}")
-        return "منورنا يا أبو السيد! ابعت سؤالك تاني وهجاوبك حالاً."
+        print(f"AI Error: {e}")
+        return "نورتنا يا فندم! ممكن توضح سؤالك أكتر؟"
+
+def normalize(text):
+    return text.lower().replace("ة", "ه").replace("أ", "ا").replace("إ", "ا").replace("آ", "ا").strip()
 
 def get_answer(text):
     q = normalize(text)
-    
-    # ردود سريعة يدوية عشان تضمن السرعة
+    # ردود يدوية سريعة كـ Back-up
     if "منيو" in q: return "اتفضل المنيو يا فندم: https://heyzine.com/flip-book/31946f16d5.html"
-    if "دم" in q: return "السمكة جاهزة للأكل، والدم نتيجة التمليح الفريش والتجميد."
+    if "فرق" in q and "رنج" in q: return "الرنجة الفريش صلاحيتها شهر (تبريد)، والمجمدة 3 شهور (تجميد)."
     
-    # الباقي يروح للـ AI عن طريق الرابط المباشر
     return get_ai_answer(text)
-        # ================== WEBHOOK ==================
+
+# ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
     if request.args.get("hub.verify_token") == VERIFY_TOKEN:
@@ -92,7 +77,3 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
-
-
-
