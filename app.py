@@ -8,8 +8,10 @@ app = Flask(__name__)
 PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD"
 VERIFY_TOKEN = "my_secret_token"
 
+# ================== CONTEXT MEMORY ==================
+LAST_TOPIC = {}  # user_id -> last topic
+
 # ================== DATA ==================
-# 1. الأسئلة العامة (لها الأولوية القصوى)
 FAQ_MAP = {
   "الرنجة فيها دود": "فندم ده مش دود، ده بيكون طفيليات. الطفيليات في سمكة الرنجة توجد في التجويف البطني لأنها تدخل في عمليات الامتصاص والتمثيل الغذائي للسمكة وهي لا تصيب الإنسان تماماً، وزيادة في الوقاية يتم تجميد الأسماك عند درجة من 35 إلى 40 تحت الصفر لتصبح الطفيليات جزء من الأمعاء ولا تؤثر على آكلها. الدود الحي لو موجود بيكون خطر على صحة الإنسان وبيكون دليل إن السمكة غير صالحة للاستهلاك. السمك زي الإنسان لما بيموت بيمر بمراحل، قبل ظهور دود حي لازم يكون منتفخ ثم متعفن ثم متهتك، وطالما السمكة غير منتفخة ولا متعفنة ولا متهتكة فدي طفيليات طبيعية بيتغذى عليها السمك.",
 
@@ -160,7 +162,6 @@ PRODUCT_MAP = {
   "Salted Mullet with Roe": "💰 سعر فسيخ مبطرخ بدون بكتيريا:\nالوزن: 1 KG\nالسعر: 560 EGP ✨"
 }
 
-
 # ================== LOGIC ==================
 def normalize(text):
     return (
@@ -173,122 +174,89 @@ def normalize(text):
     )
 
 
-def get_answer(text):
+def get_answer(text, user_id=None):
     q = normalize(text)
 
-    # 1. الترحيب والشكر
-    greetings = ["اهلا", "سلام", "مساء", "صباح", "مرحبا", "هاي", "ازيك"]
-    thanks = ["شكرا", "شكر", "تمام", "ميرسي", "تسلم", "جزاك", "ماشي"]
+    # كلمات الموافقة
+    confirm_words = ["اه", "ايوه", "ياريت", "تمام", "اوكي", "اوك", "ok"]
 
-    if any(w in q for w in thanks):
-        return "تحت أمرك يا فندم 🌹 لو احتاجت أي حاجة ابعتلنا في أي وقت."
+    if q in confirm_words and user_id in LAST_TOPIC:
+        topic = LAST_TOPIC[user_id]
 
-    if any(w in q for w in greetings):
-        return "أهلاً بك في رنجة أبو السيد 👋 نورتنا.. أساعد حضرتك ازاي؟"
+        if topic == "tuna":
+            return "💰 تونة أبو السيد يلوفين – جاهزة للأكل.\nتحب تعرف السعر ولا تفاصيل أكتر؟"
 
-    if "منيو" in q or "كتالوج" in q:
-        return f"ده لينك منيو المنتجات بتاعتنا كاملة بالأسعار:\n{FAQ_MAP['منيو']}"
+        if topic == "herring":
+            return (
+                f"💰 تشكيلة الرنجة:\n"
+                f"- {PRODUCT_MAP['Smoked Herring']}\n"
+                f"- {PRODUCT_MAP['Smoked Herring 24 Kerat']}"
+            )
 
-    # 2. الشكاوي الحساسة (أولوية قصوى)
-    if any(w in q for w in ["دود", "مدود", "طفيليات"]):
+        if topic == "feseekh":
+            return (
+                f"💰 أسعار الفسيخ:\n"
+                f"- {PRODUCT_MAP['Salted Mullet without Bacteria']}\n"
+                f"- {PRODUCT_MAP['Salted Mullet with Roe']}"
+            )
+
+    # فاكيوم
+    if q in ["فاكيوم", "يعني ايه فاكيوم"]:
+        LAST_TOPIC[user_id] = "vacuum"
+        return FAQ_MAP["فاكيوم"]
+
+    # شكاوى
+    if "دود" in q or "طفيليات" in q:
         return FAQ_MAP["الرنجة فيها دود"]
 
     if "دم" in q:
         return FAQ_MAP["ليه الفسيخ بيكون في دم"]
 
-    # 3. الشرح والفرق
-    if any(w in q for w in ["ليه", "سبب", "فرق", "الفرق", "ازاي", "ازي"]):
-        if "فيليه" in q and "ناشف" in q:
-            return FAQ_MAP["ليه الرنجة الفيليه ناشفة"]
-        if "24" in q:
-            return FAQ_MAP["الفرق بين الرنجة العادية وعيار 24"]
-        if "تون" in q or "تونه" in q:
+    # تونة
+    if "تون" in q or "تونه" in q:
+        LAST_TOPIC[user_id] = "tuna"
+
+        if any(w in q for w in ["مصري", "مستور", "مستورده", "منين"]):
+            return FAQ_MAP["التونة مستوردة ولا مصري"]
+
+        if any(w in q for w in ["فرق", "ابيض", "احمر", "بيضا", "حمرا"]):
             return FAQ_MAP["الفرق بين لحم التونة الابيض والاحمر"]
-        if "اصليه" in q or "اعرف" in q:
-            return FAQ_MAP["ازاي اتأكد ان الرنجة دي رنجة ابو السيد"]
 
-    # ================== 🔥 ذكاء المنتجات المحددة 🔥 ==================
+        return "💰 تونة أبو السيد يلوفين – جاهزة للأكل. تحب تعرف السعر ولا تفاصيل أكتر؟"
 
-    # فسيخ بصوصات
+    # فسيخ
     if "فسيخ" in q:
+        LAST_TOPIC[user_id] = "feseekh"
+
         if "بنجر" in q:
             return PRODUCT_MAP["Salted Grey Mullet with Beet Sauce"]
-        if "كاري" in q:
-            return PRODUCT_MAP["Salted Grey Mullet with Curry Sauce"]
-        if "فلفل" in q:
-            return PRODUCT_MAP["Salted Grey Mullet with Pepper Sauce"]
 
         return (
-            f"💰 أسعار الفسيخ والبوري:\n"
+            f"💰 أسعار الفسيخ:\n"
             f"- {PRODUCT_MAP['Salted Mullet without Bacteria']}\n"
-            f"- {PRODUCT_MAP['Salted Mullet with Roe']}\n"
-            f"- {PRODUCT_MAP['Salted Grey Mullet with Vegetable Oil']}\n"
-            f"- {PRODUCT_MAP['Salted Grey Mullet with Smoked Oil']}"
+            f"- {PRODUCT_MAP['Salted Mullet with Roe']}"
         )
 
-    # رنجة فيليه وصوصات
+    # رنجة
     if "رنج" in q:
-        if "فيليه" in q:
-            if "فلفل" in q:
-                return PRODUCT_MAP["Herring Fillets with Pepper Sauce"]
-            if "كاري" in q:
-                return PRODUCT_MAP["Herring Fillets with Curry Sauce"]
-            if "سكر" in q:
-                return PRODUCT_MAP["Herring Fillets with Sweet Sauce"]
-            return PRODUCT_MAP["Herring Fillets without Oil"]
-
-        if "24" in q:
-            return PRODUCT_MAP["Smoked Herring 24 Kerat"]
-
+        LAST_TOPIC[user_id] = "herring"
         return (
-            f"💰 تشكيلة الرنجة عندنا:\n"
+            f"💰 تشكيلة الرنجة:\n"
             f"- {PRODUCT_MAP['Smoked Herring']}\n"
             f"- {PRODUCT_MAP['Smoked Herring 24 Kerat']}\n"
             f"- {PRODUCT_MAP['Smoked Herring in Vacuum Packing']}\n"
             f"- {PRODUCT_MAP['Gutted Smoked Vacuumed Herring']}"
         )
 
-    # بطارخ
-    if "بطارخ" in q:
-        if "عسل" in q:
-            return PRODUCT_MAP["Herring Roe with Honey Sauce"]
-        if "برتقال" in q:
-            return PRODUCT_MAP["Herring Roe with Orange Sauce"]
-        if "نشو" in q:
-            return PRODUCT_MAP["Herring Roe White"]
-
-        return (
-            f"💰 أنواع البطارخ المتاحة:\n"
-            f"- {PRODUCT_MAP['Herring Roe with Vegetable Oil']}\n"
-            f"- {PRODUCT_MAP['Herring Roe with Orange Sauce']}\n"
-            f"- {PRODUCT_MAP['Herring Roe with Honey Sauce']}"
-        )
-
-    # ماكريل
-    if "ماكريل" in q:
-        return (
-            f"💰 أسعار الماكريل:\n"
-            f"- {PRODUCT_MAP['Gutted Smoked Mackerel Salted']}\n"
-            f"- {PRODUCT_MAP['Mackerel Fillets Vacuumed']}"
-        )
-
-    # تونة
-    if "تون" in q or "تونه" in q:
-        if any(w in q for w in ["فرق", "ابيض", "احمر"]):
-            return FAQ_MAP["الفرق بين لحم التونة الابيض والاحمر"]
-        return "💰 تونة أبو السيد يلوفين – جاهزة للأكل. تحب أبعتلك المنيو؟"
-
-    # متابعة ذكية
-    if q in ["اه", "ايوه", "ياريت"]:
-        return "تمام 👌 تحب تشوف أسعار رنجة ولا فسيخ ولا بطارخ؟"
-
     return "ممكن توضحلي أكتر تحب تعرف إيه؟ (سعر – فرق – منيو)"
-  # ================== WEBHOOK ==================
+
+# ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
     if request.args.get("hub.verify_token") == VERIFY_TOKEN:
         return request.args.get("hub.challenge")
     return "failed", 403
+
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -299,28 +267,16 @@ def webhook():
                 sender = ev["sender"]["id"]
                 if "message" in ev and "text" in ev["message"]:
                     msg_text = ev["message"]["text"]
-                    reply = get_answer(msg_text)
+                    reply = get_answer(msg_text, sender)
                     send_message(sender, reply)
     return "ok", 200
+
 
 def send_message(user_id, text):
     url = f"https://graph.facebook.com/v12.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
     payload = {"recipient": {"id": user_id}, "message": {"text": text}}
     requests.post(url, json=payload)
 
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
