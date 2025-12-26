@@ -23,32 +23,33 @@ DATA_INFO = """
 # ================== AI LOGIC ==================
 def get_ai_answer(user_text):
     if not GEMINI_API_KEY:
-        return "⚠️ المفتاح ناقص"
+        return "⚠️ المفتاح ناقص في إعدادات ريلواي"
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    # استخدمنا الموديل المستقر gemini-pro والنسخة v1
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
     
+    headers = {'Content-Type': 'application/json'}
     payload = {
-        "contents": [{"parts": [{"text": f"أنت خدمة عملاء رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بمصرية: {user_text}"}]}]
+        "contents": [{
+            "parts": [{"text": f"أنت موظف استقبال في رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بمصرية عامية على: {user_text}"}]
+        }]
     }
 
     try:
-        response = requests.post(url, json=payload, timeout=15)
+        response = requests.post(url, json=payload, headers=headers, timeout=20)
         res_data = response.json()
 
         if "candidates" in res_data:
             return res_data["candidates"][0]["content"]["parts"][0]["text"]
         
-        # أهم حتة: لو الـ AI رفض، هيقولك السبب الحقيقي عشان نحله
+        # لو جوجل لسه معترض، هيطلع لك رسالة فيها "رابط" تفتحه تفعل منه الموديل
         elif "error" in res_data:
-            return f"❌ AI Error: {res_data['error'].get('message', 'Unknown')[:50]}"
-        
-        # لو مفيش رد خالص (Fallback)
-        if "بكام" in user_text or "سعر" in user_text:
-            return "يا فندم الرنجة عندنا بـ 200ج والفسيخ بـ 460ج، تحب تطلب إيه؟"
+            return f"❌ جوجل محتاج تفعيل: {res_data['error'].get('status')}"
+            
         return "يا مساء الفل! نورت رنجة أبو السيد."
 
     except Exception as e:
-        return f"⚠️ Connection Error: {str(e)[:20]}"
+        return "يا مساء الورد! أؤمرني أساعدك إزاي؟"
         # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -86,5 +87,6 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
