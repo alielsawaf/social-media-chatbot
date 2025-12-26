@@ -205,13 +205,26 @@ def get_answer(text):
             return f"أسعار الرنجة:\n- {PRODUCT_MAP.get('Smoked Herring')}\n- {PRODUCT_MAP.get('Smoked Herring 24 Kerat')}"
 
     # 2. لو ملقاش رد يدوي، يروح للـ AI
-    ai_reply = get_ai_answer(text)
+def get_ai_answer(user_text):
+    try:
+        prompt = f"{SYSTEM_INSTRUCTION}\nالعميل بيقول: {user_text}\nالرد:"
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        # السطر ده هيخلي الخطأ يظهرلك في Railway Logs بالظبط
+        print(f"فشل الـ AI بسبب: {e}") 
+        return "منورنا في رنجة أبو السيد! ممكن توضح سؤالك أكتر عشان أقدر أساعدك؟"
+
+
+
+#  ------------------------
+ #   ai_reply = get_ai_answer(text)
     
     # لو الـ AI فشل ورجع الرد الثابت، نحاول نبعتله رد بديل ذكي
-    if "ممكن توضح سؤالك أكتر" in ai_reply:
-         return "يا فندم نورتنا! تحب تعرف أسعار الرنجة ولا الفسيخ ولا أماكن الفروع؟"
+  #  if "ممكن توضح سؤالك أكتر" in ai_reply:
+   #      return "يا فندم نورتنا! تحب تعرف أسعار الرنجة ولا الفسيخ ولا أماكن الفروع؟"
          
-    return ai_reply
+    #return ai_reply
 
 # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
@@ -240,4 +253,5 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
