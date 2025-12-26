@@ -9,22 +9,30 @@ PAGE_ACCESS_TOKEN = os.environ.get("PAGE_ACCESS_TOKEN")
 VERIFY_TOKEN = os.environ.get("VERIFY_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-DATA_INFO = "رنجة أبو السيد: مصنع رنجة وفسيخ، أسعارنا: رنجة 200ج، فسيخ 460ج. المنيو: https://heyzine.com/flip-book/31946f16d5.html"
+# هنا ضفنا كل معلوماتك عشان الـ AI يذاكرها ويرد منها
+DATA_INFO = """
+اسم المصنع: رنجة أبو السيد.
+المنتجات: رنجة سوبر، رنجة 24 قيراط، فسيخ ملح خفيف زبدة.
+الأسعار: الرنجة بـ 200 جنيه، والفسيخ بـ 460 جنيه.
+المكان: بورسعيد، وبنشحن لجميع المحافظات.
+الفرق بين الفريش والمجمد: الفريش صلاحيته شهر في الثلاجة، المجمد صلاحيته 3 شهور في الفريزر.
+رابط المنيو: https://heyzine.com/flip-book/31946f16d5.html
+طريقة التواصل: من خلال رسائل الصفحة أو رقم الواتساب الخاص بالمصنع.
+"""
 
 # ================== AI LOGIC ==================
 def get_ai_answer(user_text):
     if not GEMINI_API_KEY:
-        return "⚠️ المفتاح ناقص"
+        return "⚠️ المفتاح ناقص في إعدادات ريلواي"
 
-    # استخدام الموديل اللي نجح معاك في الفحص اللي فات
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
+    # استخدمنا 1.5-flash لأنه الأسرع ومتاح في أمريكا us-west2
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     
     headers = {'Content-Type': 'application/json'}
     
-    # الطلب في أبسط صورة (Simple Prompt)
     payload = {
         "contents": [{
-            "parts": [{"text": f"جاوب بلهجة مصرية كخدمة عملاء لمصنع رنجة أبو السيد. المعلومات: {DATA_INFO}\nالسؤال: {user_text}"}]
+            "parts": [{"text": f"أنت موظف خدمة عملاء في مصنع رنجة أبو السيد. رد بلهجة مصرية ودودة جداً وبأسلوب بيع شاطر. استخدم المعلومات دي: {DATA_INFO}\nالعميل بيقول: {user_text}"}]
         }]
     }
 
@@ -32,22 +40,18 @@ def get_ai_answer(user_text):
         response = requests.post(url, json=payload, headers=headers, timeout=20)
         res_data = response.json()
 
-        # محاولة استخراج النص
         if "candidates" in res_data and "content" in res_data["candidates"][0]:
             return res_data["candidates"][0]["content"]["parts"][0]["text"]
         
-        # لو جوجل رفض يرد (Fallback ذكي)
-        else:
-            if "بكام" in user_text or "سعر" in user_text:
-                return "يا فندم الرنجة عندنا بـ 200ج والفسيخ بـ 460ج، تحب تطلب إيه؟"
-            elif "منيو" in user_text:
-                return "اتفضل المنيو يا فندم: https://heyzine.com/flip-book/31946f16d5.html"
-            else:
-                return "يا مساء الورد! نورت رنجة أبو السيد، أؤمرني أساعدك إزاي؟"
+        # رد احتياطي لو الـ AI مهنج
+        if "سعر" in user_text or "بكام" in user_text:
+            return "رنجة أبو السيد بـ 200ج والفسيخ بـ 460ج، تحب تطلب إيه يا فندم؟"
+        return "يا مساء الفل! نورت رنجة أبو السيد، أؤمرني أساعدك إزاي؟"
 
     except Exception as e:
-        return "منورنا يا غالي! أؤمرني أساعدك إزاي؟"
-        # ================== WEBHOOK ==================
+        return "منورنا يا غالي في رنجة أبو السيد! أؤمرني أساعدك."
+
+# ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
     if request.args.get("hub.verify_token") == VERIFY_TOKEN:
@@ -84,19 +88,3 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
