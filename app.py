@@ -11,8 +11,8 @@ VERIFY_TOKEN = os.environ.get("VERIFY_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 # إعداد الجيمناي
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+#genai.configure(api_key=GEMINI_API_KEY)
+#model = genai.GenerativeModel('gemini-1.5-flash')
 
 # الداتا اللي الـ AI هيعتمد عليها
 DATA_INFO = """
@@ -92,6 +92,7 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
 
