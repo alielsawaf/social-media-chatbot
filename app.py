@@ -41,16 +41,31 @@ def get_ai_answer(user_text):
 
 # دالة احتياطية لو Pro رفض يشتغل
 def retry_with_flash(user_text):
+    # الرابط اللي أثبت نجاحه معاك
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    
+    # تأكد إن التعليمات والمعلومات بتروح في كل مرة
+    full_prompt = f"أنت خدمة عملاء مصنع رنجة أبو السيد. رد بلهجة مصرية. المعلومات: {DATA_INFO}. العميل بيقول: {user_text}"
+    
     payload = {
-        "contents": [{"parts": [{"text": f"رد بمصرية كخدمة عملاء: {user_text}"}]}]
+        "contents": [{
+            "parts": [{"text": full_prompt}]
+        }],
+        "generationConfig": {
+            "temperature": 0.8, # عشان يخلي الكلام طبيعي مش آلي
+            "maxOutputTokens": 250
+        }
     }
+    
     try:
         r = requests.post(url, json=payload, timeout=10)
         data = r.json()
-        return data['candidates'][0]['content']['parts'][0]['text']
+        if "candidates" in data:
+            return data['candidates'][0]['content']['parts'][0]['text']
+        else:
+            return "يا مساء الورد! نورتنا في رنجة أبو السيد، تحت أمرك في أي استفسار عن الأسعار أو المنيو."
     except:
-        return "يا مساء الفل! نورت رنجة أبو السيد، أؤمرني أساعدك إزاي؟"
+        return "منورنا يا غالي! أؤمرني أساعدك إزاي؟"
         # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -88,5 +103,6 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
