@@ -20,27 +20,30 @@ DATA_INFO = """
 
 # ================== AI LOGIC (Direct API) ==================
 def get_ai_answer(user_text):
-    # استخدام الرابط المباشر لجوجل بدون مكتبات
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {'Content-Type': 'application/json'}
     payload = {
         "contents": [{
-            "parts": [{"text": f"أنت خدمة عملاء رنجة أبو السيد. رد بلهجة مصرية ودودة جداً من المعلومات دي فقط: {DATA_INFO}\nالعميل بيقول: {user_text}"}]
+            "parts": [{"text": f"أنت خدمة عملاء رنجة أبو السيد. رد بلهجة مصرية من المعلومات دي: {DATA_INFO}\nالعميل: {user_text}"}]
         }]
     }
 
     try:
         response = requests.post(url, json=payload, headers=headers)
         res_data = response.json()
+        
+        # لو الرد تمام
         if "candidates" in res_data:
             return res_data['candidates'][0]['content']['parts'][0]['text']
-        return "أهلاً بك في رنجة أبو السيد! أقدر أساعدك إزاي؟"
+        
+        # لو في خطأ من جوجل (هيبعتلك كود الخطأ في الشات)
+        else:
+            error_msg = res_data.get("error", {}).get("message", "Unknown Error")
+            error_code = res_data.get("error", {}).get("status", "No Status")
+            return f"⚠️ الـ AI واجه مشكلة: {error_code} - {error_msg[:50]}"
+            
     except Exception as e:
-        print(f"AI Error: {e}")
-        return "نورتنا يا فندم! ممكن توضح سؤالك أكتر؟"
-
-def normalize(text):
-    return text.lower().replace("ة", "ه").replace("أ", "ا").replace("إ", "ا").replace("آ", "ا").strip()
+        return f"⚠️ خطأ في الاتصال: {str(e)[:50]}"
 
 def get_answer(text):
     q = normalize(text)
@@ -77,3 +80,4 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
