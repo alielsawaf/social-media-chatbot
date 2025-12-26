@@ -194,38 +194,39 @@ def get_ai_answer(user_text):
 def get_answer(text):
     q = normalize(text)
     
-    # 1. فحص يدوي سريع (الأسئلة اللي إنت عارفها ومهمة)
-    if "دم" in q:
-        return FAQ_MAP.get("ليه الفسيخ بيكون في دم", "السمكة جاهزة للأكل، والدم بيكون نتيجة التمليح الفريش والتجميد.")
-    
+    # 1. فحص الأسئلة الشائعة (FAQ) يدوياً أولاً لضمان السرعة
+    for key, val in FAQ_MAP.items():
+        if normalize(key) in q:
+            return val
+
+    # 2. فحص كلمات مفتاحية للأسعار
     if "سعر" in q or "بكام" in q:
         if "فسيخ" in q:
             return f"أسعار الفسيخ عندنا:\n- {PRODUCT_MAP.get('Salted Mullet without Bacteria')}\n- {PRODUCT_MAP.get('Salted Mullet with Roe')}"
         if "رنج" in q:
-            return f"أسعار الرنجة:\n- {PRODUCT_MAP.get('Smoked Herring')}\n- {PRODUCT_MAP.get('Smoked Herring 24 Kerat')}"
+            return f"أسعار الرنجة عندنا:\n- {PRODUCT_MAP.get('Smoked Herring')}\n- {PRODUCT_MAP.get('Smoked Herring 24 Kerat')}"
 
-    # 2. لو ملقاش رد يدوي، يروح للـ AI
+    # 3. لو ملقاش إجابة مباشرة، يبعت للـ AI
+    ai_reply = get_ai_answer(text)
+    return ai_reply
+
 def get_ai_answer(user_text):
     try:
-        prompt = f"{SYSTEM_INSTRUCTION}\nالعميل بيقول: {user_text}\nالرد:"
+        # تأكد إن الـ API Key واصل فعلاً
+        if not GEMINI_API_KEY:
+            return "يا فندم نورتنا! تحب تعرف أسعار الرنجة ولا الفسيخ؟ (خطأ في المفتاح)"
+            
+        prompt = f"{SYSTEM_INSTRUCTION}\nالعميل بيقول: {user_text}\nالرد المساعد:"
         response = model.generate_content(prompt)
-        return response.text
+        
+        if response and response.text:
+            return response.text
+        else:
+            return "منورنا في رنجة أبو السيد! أقدر أساعدك إزاي؟"
     except Exception as e:
-        # السطر ده هيخلي الخطأ يظهرلك في Railway Logs بالظبط
-        print(f"فشل الـ AI بسبب: {e}") 
-        return "منورنا في رنجة أبو السيد! ممكن توضح سؤالك أكتر عشان أقدر أساعدك؟"
-
-
-
-#  ------------------------
- #   ai_reply = get_ai_answer(text)
-    
-    # لو الـ AI فشل ورجع الرد الثابت، نحاول نبعتله رد بديل ذكي
-  #  if "ممكن توضح سؤالك أكتر" in ai_reply:
-   #      return "يا فندم نورتنا! تحب تعرف أسعار الرنجة ولا الفسيخ ولا أماكن الفروع؟"
-         
-    #return ai_reply
-
+        # السطر ده هيظهر في الـ Console Logs بتاعة Railway
+        print(f"DEBUG: AI Error -> {e}")
+        return "منورنا يا غالي! ممكن توضح سؤالك أكتر؟"
 # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -253,5 +254,6 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
