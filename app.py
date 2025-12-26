@@ -14,15 +14,15 @@ DATA_INFO = "رنجة أبو السيد: مصنع رنجة وفسيخ، أسعا
 # ================== AI LOGIC ==================
 def get_ai_answer(user_text):
     if not GEMINI_API_KEY:
-        return "⚠️ خطأ: GEMINI_API_KEY مش موجود في إعدادات Railway!"
+        return "⚠️ خطأ: المفتاح غير مضبوط"
 
-    # التغيير هنا: خليناها v1 بدل v1beta
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    # ده الرابط المستقر لمناداة موديل Pro (النسخة المجانية)
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
     
     headers = {'Content-Type': 'application/json'}
     payload = {
         "contents": [{
-            "parts": [{"text": f"أنت خدمة عملاء رنجة أبو السيد. رد بلهجة مصرية ودودة جداً من المعلومات دي فقط: {DATA_INFO}\nالعميل بيقول: {user_text}"}]
+            "parts": [{"text": f"أنت مساعد ذكي لمصنع رنجة أبو السيد. رد بمصرية عامية. المعلومات: {DATA_INFO}\nالعميل: {user_text}"}]
         }]
     }
 
@@ -33,11 +33,25 @@ def get_ai_answer(user_text):
         if "candidates" in res_data:
             return res_data['candidates'][0]['content']['parts'][0]['text']
         else:
-            # لو لسه في مشكلة، ابعت نص الرد عشان نشوفه
-            return f"❌ رد جوجل: {res_data.get('error', {}).get('message', 'خطأ غير معروف')}"
+            # لو الموديل Pro لسه فيه مشكلة في المنطقة، هنجرب Flash بس بالرابط الصحيح
+            return retry_with_flash(user_text)
+            
     except Exception as e:
-        return f"⚠️ فشل الاتصال: {str(e)[:50]}"
-# ================== WEBHOOK ==================
+        return "أهلاً بك في رنجة أبو السيد! نورتنا."
+
+# دالة احتياطية لو Pro رفض يشتغل
+def retry_with_flash(user_text):
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    payload = {
+        "contents": [{"parts": [{"text": f"رد بمصرية كخدمة عملاء: {user_text}"}]}]
+    }
+    try:
+        r = requests.post(url, json=payload, timeout=10)
+        data = r.json()
+        return data['candidates'][0]['content']['parts'][0]['text']
+    except:
+        return "يا مساء الفل! نورت رنجة أبو السيد، أؤمرني أساعدك إزاي؟"
+        # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
     if request.args.get("hub.verify_token") == VERIFY_TOKEN:
@@ -74,4 +88,5 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
