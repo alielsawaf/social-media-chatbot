@@ -16,30 +16,43 @@ def get_ai_answer(user_text):
     if not GEMINI_API_KEY:
         return "⚠️ المفتاح ناقص"
 
-    # جربنا gemini-1.0-pro لأنه الموديل الأساسي اللي مبيختفيش
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key={GEMINI_API_KEY}"
+    # الخطوة 1: هنسأل جوجل "إيه الموديلات اللي عندك يا سيدي؟"
+    list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
     
-    headers = {'Content-Type': 'application/json'}
-    payload = {
-        "contents": [{
-            "parts": [{
-                "text": f"أنت خدمة عملاء رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بمصرية: {user_text}"
-            }]
-        }]
-    }
-
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=15)
+        models_res = requests.get(list_url, timeout=10).json()
+        available_models = [m['name'] for m in models_res.get('models', [])]
+        
+        # الخطوة 2: هنختار أول موديل متاح يدعم توليد المحتوى
+        # هندور بالترتيب على (flash 1.5 ثم pro 1.5 ثم pro 1.0)
+        selected_model = ""
+        for target in ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]:
+            for am in available_models:
+                if target in am:
+                    selected_model = am
+                    break
+            if selected_model: break
+        
+        if not selected_model:
+            return "❌ جوجل مش مفعّل أي موديلات على المفتاح ده حالياً."
+
+        # الخطوة 3: نبعت السؤال للموديل اللي لقيناه شغال فعلاً
+        url = f"https://generativelanguage.googleapis.com/v1beta/{selected_model}:generateContent?key={GEMINI_API_KEY}"
+        
+        payload = {
+            "contents": [{"parts": [{"text": f"أنت خدمة عملاء رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بمصرية: {user_text}"}]}]
+        }
+        
+        response = requests.post(url, json=payload, timeout=15)
         res_data = response.json()
 
         if "candidates" in res_data:
             return res_data["candidates"][0]["content"]["parts"][0]["text"]
-        
-        # لو لسه معترض، هيرجع لنا الرسالة عشان نعرف لو فيه موديل تاني
-        return f"❌ جوجل لسه بيقول: {res_data.get('error', {}).get('message', 'خطأ غير معروف')}"
+        else:
+            return f"❌ الموديل {selected_model} موجود بس رفض يرد."
 
     except Exception as e:
-        return "يا مساء الورد! نورت رنجة أبو السيد."
+        return f"⚠️ عذراً، حاول مرة أخرى (خطأ اتصال)."
         # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -77,6 +90,7 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
 
