@@ -174,10 +174,9 @@ def normalize(text):
 
 
 def get_answer(text):
-
     q = normalize(text)
 
-    # 1️⃣ الترحيب والشكر
+    # 1. الترحيب والشكر
     greetings = ["اهلا", "سلام", "مساء", "صباح", "مرحبا", "هاي", "ازيك"]
     thanks = ["شكرا", "شكر", "تمام", "ميرسي", "تسلم", "جزاك", "ماشي"]
 
@@ -185,109 +184,101 @@ def get_answer(text):
         return "تحت أمرك يا فندم 🌹 لو احتاجت أي حاجة ابعتلنا في أي وقت."
 
     if any(w in q for w in greetings):
-        return "أهلاً بيك في رنجة أبو السيد 👋 نورتنا.. تحب أساعدك في إيه؟"
+        return "أهلاً بك في رنجة أبو السيد 👋 نورتنا.. أساعد حضرتك ازاي؟"
 
-    # 2️⃣ منيو / كتالوج
     if "منيو" in q or "كتالوج" in q:
-        return FAQ_MAP["منيو"]
+        return f"ده لينك منيو المنتجات بتاعتنا كاملة بالأسعار:\n{FAQ_MAP['منيو']}"
 
-    # 3️⃣ شكاوي حساسة (أولوية قصوى)
+    # 2. الشكاوي الحساسة (أولوية قصوى)
     if any(w in q for w in ["دود", "مدود", "طفيليات"]):
         return FAQ_MAP["الرنجة فيها دود"]
 
     if "دم" in q:
         return FAQ_MAP["ليه الفسيخ بيكون في دم"]
 
-    # 4️⃣ أسئلة عامة مباشرة (Matching ذكي)
-    for key, answer in FAQ_MAP.items():
-        key_words = normalize(key).split()
-        if all(k in q for k in key_words[:2]):
-            return answer
-
-    # 5️⃣ ليه / الفرق / شرح
+    # 3. الشرح والفرق
     if any(w in q for w in ["ليه", "سبب", "فرق", "الفرق", "ازاي", "ازي"]):
-
         if "فيليه" in q and "ناشف" in q:
             return FAQ_MAP["ليه الرنجة الفيليه ناشفة"]
-
         if "24" in q:
             return FAQ_MAP["الفرق بين الرنجة العادية وعيار 24"]
-
-        if "فيليه" in q and "عادي" in q:
-            return FAQ_MAP["الفرق بين الرنجة الفيليه والعادية"]
-
         if "تون" in q or "تونه" in q:
             return FAQ_MAP["الفرق بين لحم التونة الابيض والاحمر"]
+        if "اصليه" in q or "اعرف" in q:
+            return FAQ_MAP["ازاي اتأكد ان الرنجة دي رنجة ابو السيد"]
 
-        if "فاكيوم" in q:
-            return FAQ_MAP["يعني ايه فاكيوم"]
+    # ================== 🔥 ذكاء المنتجات المحددة 🔥 ==================
 
-    # 6️⃣ الرنجة
-    if "رنج" in q:
-        if "فيليه" in q:
-            return (
-                f"💰 أسعار رنجة الفيليه:\n"
-                f"- {PRODUCT_MAP['Herring Fillets without Oil']}\n"
-                f"- {PRODUCT_MAP['Herring Fillets with Pepper Sauce']}\n"
-                f"- {PRODUCT_MAP['Herring Fillets with Curry Sauce']}\n"
-                f"- {PRODUCT_MAP['Herring Fillets with Vegetable Oil']}"
-            )
+    # فسيخ بصوصات
+    if "فسيخ" in q:
+        if "بنجر" in q:
+            return PRODUCT_MAP["Salted Grey Mullet with Beet Sauce"]
+        if "كاري" in q:
+            return PRODUCT_MAP["Salted Grey Mullet with Curry Sauce"]
+        if "فلفل" in q:
+            return PRODUCT_MAP["Salted Grey Mullet with Pepper Sauce"]
 
-        return (
-            f"💰 تشكيلة الرنجة المتاحة:\n"
-            f"- {PRODUCT_MAP['Smoked Herring']}\n"
-            f"- {PRODUCT_MAP['Smoked Herring 24 Kerat']}\n"
-            f"- {PRODUCT_MAP['Smoked Vacuumed Herring with Roe']}\n"
-            f"- {PRODUCT_MAP['Gutted Smoked Vacuumed Herring']}\n"
-            f"- {PRODUCT_MAP['Smoked Herring in Vacuum Packing']}\n\n"
-            f"تحب تعرف أسعار الفيليه أو البطارخ؟"
-        )
-
-    # 7️⃣ الفسيخ والبوري
-    if "فسيخ" in q or "بوري" in q:
         return (
             f"💰 أسعار الفسيخ والبوري:\n"
             f"- {PRODUCT_MAP['Salted Mullet without Bacteria']}\n"
             f"- {PRODUCT_MAP['Salted Mullet with Roe']}\n"
-            f"- {PRODUCT_MAP['Smoked Salted Mullet']}\n"
             f"- {PRODUCT_MAP['Salted Grey Mullet with Vegetable Oil']}\n"
             f"- {PRODUCT_MAP['Salted Grey Mullet with Smoked Oil']}"
         )
 
-    # 8️⃣ البطارخ
-    if "بطارخ" in q or "نشو" in q:
+    # رنجة فيليه وصوصات
+    if "رنج" in q:
+        if "فيليه" in q:
+            if "فلفل" in q:
+                return PRODUCT_MAP["Herring Fillets with Pepper Sauce"]
+            if "كاري" in q:
+                return PRODUCT_MAP["Herring Fillets with Curry Sauce"]
+            if "سكر" in q:
+                return PRODUCT_MAP["Herring Fillets with Sweet Sauce"]
+            return PRODUCT_MAP["Herring Fillets without Oil"]
+
+        if "24" in q:
+            return PRODUCT_MAP["Smoked Herring 24 Kerat"]
+
         return (
-            f"💰 أنواع البطارخ:\n"
-            f"- {PRODUCT_MAP['Herring Roe White']}\n"
+            f"💰 تشكيلة الرنجة عندنا:\n"
+            f"- {PRODUCT_MAP['Smoked Herring']}\n"
+            f"- {PRODUCT_MAP['Smoked Herring 24 Kerat']}\n"
+            f"- {PRODUCT_MAP['Smoked Herring in Vacuum Packing']}\n"
+            f"- {PRODUCT_MAP['Gutted Smoked Vacuumed Herring']}"
+        )
+
+    # بطارخ
+    if "بطارخ" in q:
+        if "عسل" in q:
+            return PRODUCT_MAP["Herring Roe with Honey Sauce"]
+        if "برتقال" in q:
+            return PRODUCT_MAP["Herring Roe with Orange Sauce"]
+        if "نشو" in q:
+            return PRODUCT_MAP["Herring Roe White"]
+
+        return (
+            f"💰 أنواع البطارخ المتاحة:\n"
             f"- {PRODUCT_MAP['Herring Roe with Vegetable Oil']}\n"
             f"- {PRODUCT_MAP['Herring Roe with Orange Sauce']}\n"
             f"- {PRODUCT_MAP['Herring Roe with Honey Sauce']}"
         )
 
-    # 9️⃣ الماكريل
+    # ماكريل
     if "ماكريل" in q:
         return (
             f"💰 أسعار الماكريل:\n"
             f"- {PRODUCT_MAP['Gutted Smoked Mackerel Salted']}\n"
-            f"- {PRODUCT_MAP['Smoked Salted Mackerel Vacuumed']}\n"
             f"- {PRODUCT_MAP['Mackerel Fillets Vacuumed']}"
         )
 
-    # 🔟 التونة
+    # تونة
     if "تون" in q or "تونه" in q:
-        if any(w in q for w in ["ابيض", "احمر", "فرق"]):
+        if any(w in q for w in ["فرق", "ابيض", "احمر"]):
             return FAQ_MAP["الفرق بين لحم التونة الابيض والاحمر"]
-        if any(w in q for w in ["مستورد", "مصري", "منين"]):
-            return FAQ_MAP["التونة مستوردة ولا مصري"]
-        return (
-            "💰 تونة أبو السيد يلوفين:\n"
-            "- مطهية وجاهزة للأكل\n"
-            "- زيت نباتي فقط\n"
-            "- متاحة بأوزان مختلفة\n"
-            "تحب أعرفك بالتفاصيل؟"
-        )
+        return "💰 تونة أبو السيد يلوفين – جاهزة للأكل. تحب أبعتلك المنيو؟"
 
-    # 🔁 متابعة
+    # متابعة ذكية
     if q in ["اه", "ايوه", "ياريت"]:
         return "تمام 👌 تحب تشوف أسعار رنجة ولا فسيخ ولا بطارخ؟"
 
@@ -319,6 +310,7 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
 
