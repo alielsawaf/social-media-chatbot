@@ -25,36 +25,36 @@ def get_ai_answer(user_text):
     if not GEMINI_API_KEY:
         return "⚠️ المفتاح ناقص"
 
-    # الرابط الرسمي v1 مع الموديل الأحدث
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    # لستة بكل الموديلات المحتملة (الأحدث فالأقدم)
+    model_names = [
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-flash",
+        "gemini-pro"
+    ]
     
-    headers = {'Content-Type': 'application/json'}
-    payload = {
-        "contents": [{
-            "parts": [{"text": f"أنت خدمة عملاء رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بمصرية: {user_text}"}]
-        }]
-    }
-
-    try:
-        response = requests.post(url, json=payload, headers=headers, timeout=20)
-        res_data = response.json()
-
-        if "candidates" in res_data:
-            return res_data["candidates"][0]["content"]["parts"][0]["text"]
+    for model in model_names:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
+        payload = {
+            "contents": [{"parts": [{"text": f"أنت خدمة عملاء رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بمصرية: {user_text}"}]}]
+        }
         
-        # لو طلع خطأ، هنخلي البوت يجاوب "من دماغه" بناءً على الـ DATA_INFO اللي معانا
-        # عشان الزبون ميحسش إن فيه عطل
-        else:
-            print(f"Google Error: {res_data}") # هيظهر في لوجز ريلواي
-            if "فرق" in user_text or "فريش" in user_text:
-                return "يا فندم الفريش صلاحيته شهر في الثلاجة، والمجمد صلاحيته 3 شهور في الفريزر. تحب أجرب لك أيهم؟"
-            elif "سعر" in user_text or "بكام" in user_text:
-                return "الرنجة عندنا بـ 200ج والفسيخ بـ 460ج، والمنيو هنا: https://heyzine.com/flip-book/31946f16d5.html"
-            return "يا مساء الفل! نورت رنجة أبو السيد، أؤمرني أساعدك إزاي؟"
+        try:
+            response = requests.post(url, json=payload, timeout=10)
+            res_data = response.json()
+            
+            if "candidates" in res_data:
+                return res_data["candidates"][0]["content"]["parts"][0]["text"]
+        except:
+            continue # لو موديل فشل جرب اللي بعده
 
-    except Exception as e:
-        return "يا مساء الورد! منورنا في رنجة أبو السيد."
-        # ================== WEBHOOK ==================
+    # لو كل المحاولات فشلت (الرد الذكي المبرمج)
+    if "فرق" in user_text:
+        return "بص يا غالي، الفريش بيقعد شهر في الثلاجة، أما المجمد فبيقعد 3 شهور في الفريزر. تحب تطلب أياً منهم؟"
+    elif "سعر" in user_text or "بكام" in user_text:
+        return "رنجة أبو السيد بـ 200ج والفسيخ بـ 460ج، تحب نجهزلك أوردر؟"
+    
+    return "يا مساء الورد! نورت رنجة أبو السيد، أؤمرني أساعدك إزاي؟"
+    # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
     if request.args.get("hub.verify_token") == VERIFY_TOKEN:
@@ -91,6 +91,7 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
 
