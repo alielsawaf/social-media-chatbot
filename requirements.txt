@@ -3,6 +3,6 @@ requests
 gunicorn
 python-dotenv
 fuzzywuzzy
-google-generativeai
+
 
 
