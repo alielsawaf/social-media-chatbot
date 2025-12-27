@@ -1,98 +1,92 @@
-from flask import Flask, request
-import requests
 import os
-import google.generativeai as genai
+import requests
+from flask import Flask, request
+
 app = Flask(__name__)
 
-# ================== CONFIG ==================
 PAGE_ACCESS_TOKEN = os.environ.get("PAGE_ACCESS_TOKEN")
 VERIFY_TOKEN = os.environ.get("VERIFY_TOKEN")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-genai.configure(api_key=GEMINI_API_KEY)
-# هنا ضفنا كل معلوماتك عشان الـ AI يذاكرها ويرد منها
+
+# جلب البيانات من البيئة
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+
+# معلومات المصنع (DATA_INFO) اللي الـ AI هيعتمد عليها
 DATA_INFO = """
-اسم المصنع: رنجة أبو السيد.
-المنتجات: رنجة سوبر، رنجة 24 قيراط، فسيخ ملح خفيف زبدة.
-الأسعار: الرنجة بـ 200 جنيه، والفسيخ بـ 460 جنيه.
-المكان: بورسعيد، وبنشحن لجميع المحافظات.
-الفرق بين الفريش والمجمد: الفريش صلاحيته شهر في الثلاجة، المجمد صلاحيته 3 شهور في الفريزر.
-رابط المنيو: https://heyzine.com/flip-book/31946f16d5.html
-طريقة التواصل: من خلال رسائل الصفحة أو رقم الواتساب الخاص بالمصنع.
+اسم المكان: رنجة أبو السيد.
+المنتجات والأسعار: رنجة سوبر (200ج)، فسيخ زبدة ملح خفيف (460ج).
+المكان: بورسعيد.
+الشحن: متاح لكل محافظات مصر.
+الصلاحية: الفريش (شهر في الثلاجة)، المجمد (3 شهور في الفريزر).
+المنيو: https://heyzine.com/flip-book/31946f16d5.html
 """
 
-# ================== AI LOGIC ==================
-
-
 def get_ai_answer(user_text):
-    if not GEMINI_API_KEY:
-        return "⚠️ المفتاح ناقص"
+    if not GROQ_API_KEY:
+        return "يا مساء الفل! نورت رنجة أبو السيد، أؤمرني أساعدك إزاي؟"
+
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "model": "llama-3.1-70b-versatile",
+        "messages": [
+            {
+                "role": "system", 
+                "content": f"أنت موظف استقبال ذكي في مصنع رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بلهجة مصرية بورسعيدية خفيفة، كن ودوداً جداً ومرحاً، وشجع العميل على الطلب."
+            },
+            {"role": "user", "content": user_text}
+        ],
+        "temperature": 0.7
+    }
 
     try:
-        # ضبط الإعدادات
-        genai.configure(api_key=GEMINI_API_KEY)
+        response = requests.post(url, json=payload, headers=headers, timeout=15)
+        res_data = response.json()
         
-        # استخدام الموديل flash-8b (ده أخف وأسرع ومتاح دايماً مجاناً)
-        model = genai.GenerativeModel('gemini-1.5-flash-8b')
-        
-        full_prompt = f"أنت خدمة عملاء رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بمصرية: {user_text}"
-        
-        response = model.generate_content(full_prompt)
-        
-        if response and response.text:
-            return response.text
+        if 'choices' in res_data:
+            return res_data['choices'][0]['message']['content']
+        else:
+            # رد احتياطي ذكي في حال حدوث مشكلة في الـ API
+            if "بكام" in user_text or "سعر" in user_text:
+                return "الرنجة بـ 200ج والفسيخ بـ 460ج، تحب نجهزلك أوردر؟"
+            return "يا مساء الورد! نورت رنجة أبو السيد، أؤمرني يا غالي أساعدك إزاي؟"
 
-    except Exception as e:
-        # لو الـ AI فشل، نستخدم ذكائنا اليدوي عشان الزبون ميهربش
-        user_text = user_text.lower()
-        if "توصيل" in user_text or "شحن" in user_text:
-            return "أيوه يا فندم بنشحن لجميع المحافظات من بورسعيد، أؤمرني محتاج التوصيل لفين؟"
-        if "سعر" in user_text or "بكام" in user_text:
-            return "الرنجة بـ 200ج والفسيخ بـ 460ج، تحب تطلب كام كيلو؟"
-        if "منيو" in user_text:
-            return "اتفضل المنيو يا فندم: https://heyzine.com/flip-book/31946f16d5.html"
-            
-    return "يا مساء الورد! نورت رنجة أبو السيد، أؤمرني أساعدك إزاي؟"
-    # ================== WEBHOOK ==================
-@app.route("/webhook", methods=["GET"])
+    except Exception:
+        return "يا مساء الجمال! معاك رنجة أبو السيد، أؤمرني أساعدك في الأسعار أو الشحن؟"
+
+@app.route('/', methods=['GET'])
 def verify():
-    if request.args.get("hub.verify_token") == VERIFY_TOKEN:
-        return request.args.get("hub.challenge")
-    return "failed", 403
+    # كود التحقق الخاص بفيسبوك (Webhook Verification)
+    if request.args.get("hub.mode") == "subscribe" and request.args.get("hub.challenge"):
+        if not request.args.get("hub.verify_token") == os.environ.get("VERIFY_TOKEN"):
+            return "Verification token mismatch", 403
+        return request.args.get("hub.challenge"), 200
+    return "Hello Abo Elseed Bot", 200
 
-@app.route("/webhook", methods=["POST"])
+@app.route('/', methods=['POST'])
 def webhook():
     data = request.get_json()
-    if data.get("object") == "page":
-        for entry in data.get("entry", []):
-            for ev in entry.get("messaging", []):
-                sender_id = ev.get("sender", {}).get("id")
-                if "message" in ev and "text" in ev["message"]:
-                    msg_text = ev["message"]["text"]
-                    
-                    # الردود اليدوية السريعة
-                    if "منيو" in msg_text:
-                        reply = "اتفضل المنيو يا فندم: https://heyzine.com/flip-book/31946f16d5.html"
-                    else:
-                        reply = get_ai_answer(msg_text)
-                    
-                    send_message(sender_id, reply)
+    try:
+        if data['object'] == 'page':
+            for entry in data['entry']:
+                for messaging_event in entry['messaging']:
+                    if messaging_event.get('message'):
+                        sender_id = messaging_event['sender']['id']
+                        message_text = messaging_event['message'].get('text')
+                        
+                        if message_text:
+                            # الحصول على الرد من الـ AI
+                            answer = get_ai_answer(message_text)
+                            # هنا تضع كود إرسال الرسالة لفيسبوك (Send API)
+                            # send_message(sender_id, answer) 
+                            
+    except:
+        pass
     return "ok", 200
 
-def send_message(user_id, text):
-    if not user_id: return
-    url = f"https://graph.facebook.com/v12.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
-    payload = {"recipient": {"id": user_id}, "message": {"text": text}}
-    try:
-        requests.post(url, json=payload)
-    except Exception as e:
-        print(f"Facebook Send Error: {e}")
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
-
-
-
-
-
-
+    app.run(debug=True, port=os.getenv("PORT", default=5000))
