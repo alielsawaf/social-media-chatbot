@@ -21,29 +21,36 @@ DATA_INFO = """
 """
 
 # ================== AI LOGIC ==================
+
+
 def get_ai_answer(user_text):
     if not GEMINI_API_KEY:
         return "⚠️ المفتاح ناقص"
 
     try:
-        # هنا بننادي الموديل مباشرة بالمكتبة الرسمية
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # ضبط الإعدادات
+        genai.configure(api_key=GEMINI_API_KEY)
         
-        prompt = f"أنت موظف شاطر في مصنع رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بلهجة مصرية عامية وبسرعة على: {user_text}"
+        # استخدام الموديل flash-8b (ده أخف وأسرع ومتاح دايماً مجاناً)
+        model = genai.GenerativeModel('gemini-1.5-flash-8b')
         
-        response = model.generate_content(prompt)
+        full_prompt = f"أنت خدمة عملاء رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بمصرية: {user_text}"
         
-        if response.text:
+        response = model.generate_content(full_prompt)
+        
+        if response and response.text:
             return response.text
-            
+
     except Exception as e:
-        print(f"Gemini Error: {e}")
-        # الردود الذكية لو الخدمة وقعت
+        # لو الـ AI فشل، نستخدم ذكائنا اليدوي عشان الزبون ميهربش
+        user_text = user_text.lower()
         if "توصيل" in user_text or "شحن" in user_text:
-            return "أيوه يا فندم بنشحن لجميع المحافظات، أؤمرني محتاج التوصيل لفين؟"
-        elif "سعر" in user_text or "بكام" in user_text:
+            return "أيوه يا فندم بنشحن لجميع المحافظات من بورسعيد، أؤمرني محتاج التوصيل لفين؟"
+        if "سعر" in user_text or "بكام" in user_text:
             return "الرنجة بـ 200ج والفسيخ بـ 460ج، تحب تطلب كام كيلو؟"
-        
+        if "منيو" in user_text:
+            return "اتفضل المنيو يا فندم: https://heyzine.com/flip-book/31946f16d5.html"
+            
     return "يا مساء الورد! نورت رنجة أبو السيد، أؤمرني أساعدك إزاي؟"
     # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
@@ -82,6 +89,7 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
 
