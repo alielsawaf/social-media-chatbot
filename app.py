@@ -61,59 +61,89 @@ PRODUCT_MAP = {
 
 # ================== AI LOGIC (Groq) ==================
 def get_ai_answer(user_text):
-    if not GROQ_API_KEY: return None
+    # التأكد من وجود المفتاح في السيرفر
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key: 
+        return None
+        
     try:
         url = "https://api.groq.com/openai/v1/chat/completions"
-        headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
         payload = {
             "model": "llama-3.1-70b-versatile",
             "messages": [
-                {"role": "system", "content": f"أنت خدمة عملاء رنجة أبو السيد بورسعيد. البيانات المتاحة لك: {list(FAQ_MAP.values())}. رد بمصرية بورسعيدية خفيفة وودودة جداً. لو العميل سأل عن سعر، استخدم البيانات المتاحة."},
+                {
+                    "role": "system", 
+                    "content": f"أنت خدمة عملاء رنجة أبو السيد بورسعيد. المعلومات المتاحة لك: {list(FAQ_MAP.values())}. رد بلهجة مصرية بورسعيدية خفيفة، كن ودوداً جداً ومرحاً وشجع العميل على الطلب."
+                },
                 {"role": "user", "content": user_text}
             ],
-            "temperature": 0.6
+            "temperature": 0.7
         }
-        response = requests.post(url, json=payload, timeout=7)
-        return response.json()['choices'][0]['message']['content']
-    except:
+        response = requests.post(url, json=payload, timeout=10)
+        res_data = response.json()
+        return res_data['choices'][0]['message']['content']
+    except Exception as e:
+        print(f"Error in Groq: {e}")
         return None
 
 # ================== MAIN LOGIC ==================
 def normalize(text):
-    return text.lower().replace("ة", "ه").replace("أ", "ا").replace("إ", "ا").replace("آ", "ا").strip()
+    return (
+        text.lower()
+        .replace("ة", "ه")
+        .replace("أ", "ا")
+        .replace("إ", "ا")
+        .replace("آ", "ا")
+        .strip()
+    )
 
 def get_answer(text):
     q = normalize(text)
     
-    # 1. الشكاوي الحساسة (تفضل يدوية للدقة القانونية والطبية)
+    # 1. الشكاوي الحساسة (أولوية قصوى يدوياً)
     if any(w in q for w in ["دود", "مدود", "طفيليات"]):
         return FAQ_MAP["الرنجة فيها دود"]
 
-    # 2. الأسئلة اللي إجابتها محددة جداً في الـ FAQ_MAP عندك
-    # بنعمل Loop عشان لو الزبون سأل سؤال نصي من اللي إنت كاتبه
-    for key in FAQ_MAP.keys():
-        if normalize(key) in q:
-            return FAQ_MAP[key]
-
-    # 3. 🔥 هنا بقى السر: ندي فرصة للـ AI يفكر في الأسئلة العامة
-    # لو السؤال فيه "ازاي، طريقة، اعمل، وصفة، رايك، ليه، الفرق"
-    ai_keywords = ["ازاي", "طريقة", "اعمل", "وصفة", "رايك", "ليه", "فرق", "ايهما"]
-    if any(w in q for w in ai_keywords):
+    # 2. الكلمات اللي تدل على دردشة أو طلب رأي أو طريقة (تروح للـ AI فوراً)
+    chat_keywords = ["ازاي", "طريقة", "اعمل", "وصفة", "رايك", "ليه", "فرق", "ايهما", "احلى", "افضل", "اكل ايه"]
+    if any(w in q for w in chat_keywords):
         ai_reply = get_ai_answer(text)
         if ai_reply:
             return ai_reply
 
-    # 4. لو ملحقش أي حاجة فوق، يروح للأسعار اليدوية
+    # 3. الأسئلة اللي إجابتها متطابقة تماماً في الـ FAQ_MAP
+    for key in FAQ_MAP.keys():
+        if normalize(key) == q:
+            return FAQ_MAP[key]
+
+    # 4. ردود الأسعار اليدوية (لو ملقاش دردشة)
     if "فسيخ" in q:
-        return f"💰 أسعار الفسيخ:\n- {PRODUCT_MAP['Salted Mullet without Bacteria']}\n- {PRODUCT_MAP['Salted Mullet with Roe']}"
+        return (
+            f"💰 أسعار الفسيخ والبوري:\n"
+            f"- {PRODUCT_MAP.get('Salted Mullet without Bacteria', '460 EGP')}\n"
+            f"- {PRODUCT_MAP.get('Salted Mullet with Roe', '560 EGP')}\n"
+            f"تحب تعرف تفاصيل أكتر عن الأحجام؟"
+        )
     
     if "رنج" in q:
-        return f"تشكيلة الرنجة:\n- {PRODUCT_MAP['Smoked Herring']}\nتحب أبعتلك المنيو الكامل؟"
+        return (
+            f"💰 تشكيلة الرنجة المتاحة:\n"
+            f"- {PRODUCT_MAP.get('Smoked Herring', '200 EGP')}\n"
+            f"ده لينك المنيو الكامل للأسعار: {FAQ_MAP['منيو']}"
+        )
 
-    # 5. الملاذ الأخير: الـ AI يحاول يفهم أي حاجة تانية
+    # 5. الملاذ الأخير: اترك الـ AI يحاول فهم أي شيء آخر
     ai_reply = get_ai_answer(text)
-    return ai_reply if ai_reply else "نورت رنجة أبو السيد! ممكن توضحلي سؤالك أكتر؟"
-# ================== WEBHOOK ==================
+    if ai_reply:
+        return ai_reply
+
+    return "يا مساء الورد! نورت رنجة أبو السيد 👋 أؤمرني يا غالي حابب تعرف الأسعار ولا المنيو؟"
+
+# ================== WEBHOOK & SERVER ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
     if request.args.get("hub.verify_token") == VERIFY_TOKEN:
@@ -136,8 +166,11 @@ def webhook():
 def send_message(user_id, text):
     url = f"https://graph.facebook.com/v12.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
     payload = {"recipient": {"id": user_id}, "message": {"text": text}}
-    requests.post(url, json=payload)
+    try:
+        requests.post(url, json=payload, timeout=10)
+    except:
+        pass
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
