@@ -59,80 +59,61 @@ PRODUCT_MAP = {
     # ... باقي المنتجات في الكود الاصلي مخزنة داخلياً ...
 }
 
-# ================== AI LOGIC (Groq) ==================
+# ================== AI LOGIC (Groq) مع كاشف أخطاء ==================
 def get_ai_answer(user_text):
-    # التأكد من وجود المفتاح في السيرفر
     api_key = os.environ.get("GROQ_API_KEY")
-    if not api_key: 
+    if not api_key:
+        print("❌ خطأ: مفتاح GROQ_API_KEY غير موجود في إعدادات ريلواي!")
         return None
         
     try:
         url = "https://api.groq.com/openai/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
         payload = {
             "model": "llama-3.1-70b-versatile",
             "messages": [
-                {
-                    "role": "system", 
-                    "content": f"أنت خدمة عملاء رنجة أبو السيد بورسعيد. المعلومات المتاحة لك: {list(FAQ_MAP.values())}. رد بلهجة مصرية بورسعيدية خفيفة، كن ودوداً جداً ومرحاً وشجع العميل على الطلب."
-                },
+                {"role": "system", "content": "أنت مساعد مبيعات في رنجة أبو السيد بورسعيد. رد بلهجة بورسعيدية."},
                 {"role": "user", "content": user_text}
             ],
             "temperature": 0.7
         }
         response = requests.post(url, json=payload, timeout=10)
-        res_data = response.json()
-        return res_data['choices'][0]['message']['content']
+        
+        # اختبار الرد
+        if response.status_code == 200:
+            print("✅ الـ API شغال وبيرد بنجاح!")
+            return response.json()['choices'][0]['message']['content']
+        else:
+            print(f"❌ الـ API رد بخطأ رقم: {response.status_code}")
+            print(f"تفاصيل الخطأ: {response.text}")
+            return None
     except Exception as e:
-        print(f"Error in Groq: {e}")
+        print(f"❌ حدث خطأ أثناء الاتصال بالـ API: {str(e)}")
         return None
 
-# ================== MAIN LOGIC ==================
-def normalize(text):
-    return (
-        text.lower()
-        .replace("ة", "ه")
-        .replace("أ", "ا")
-        .replace("إ", "ا")
-        .replace("آ", "ا")
-        .strip()
-    )
-
+# ================== الرد (بأولوية الـ AI القصوى للتأكد) ==================
 def get_answer(text):
     q = normalize(text)
     
-    # 1. الشكاوي (يدوي دائماً للدقة)
-    if any(w in q for w in ["دود", "مدود", "طفيليات"]):
+    # اختبار سريع جداً: لو العميل كتب كلمة "تست" يرد الـ AI فوراً
+    if "تست" in q or "test" in q:
+        return "جاري فحص الـ AI... الرد هو: " + (get_ai_answer("قول كلمة واحدة: شغال") or "مش شغال")
+
+    # 1. الشكاوي (يدوي)
+    if any(w in q for w in ["دود", "مدود"]):
         return FAQ_MAP["الرنجة فيها دود"]
 
-    # 2. 🔥 الذكاء الاصطناعي (أولوية قصوى للدردشة والأسئلة العامة) 🔥
-    # لو السؤال فيه أكتر من كلمة أو كلمات دردشة، ابعته للـ AI الأول
-    chat_keywords = ["ازاي", "طريقة", "اعمل", "وصفة", "رايك", "ايهما", "احلى", "افضل", "اكل ايه", "تفتكر"]
-    
-    # لو السؤال طويل (أكتر من 3 كلمات) أو فيه كلمة دردشة، خليه يروح للـ AI
-    if len(q.split()) > 3 or any(w in q for w in chat_keywords):
-        ai_reply = get_ai_answer(text)
-        if ai_reply:
-            return ai_reply
-
-    # 3. الردود اليدوية المباشرة (لو العميل كتب كلمة واحدة فقط)
-    for key in FAQ_MAP.keys():
-        if normalize(key) == q:
-            return FAQ_MAP[key]
-
-    if "فسيخ" in q:
-        return f"💰 أسعار الفسيخ:\n- {PRODUCT_MAP.get('Salted Mullet without Bacteria', '460 EGP')}\nتحب نجهزلك أوردر؟"
-    
-    if "رنج" in q:
-        return f"💰 سعر الرنجة السوبر 200ج.\nتحب نبعتلك المنيو؟"
-
-    # 4. الملاذ الأخير لو كل اللي فوق فشل
+    # 2. نمرر السؤال للـ AI "أولاً" عشان نكسر الردود اليدوية ونختبره
     ai_reply = get_ai_answer(text)
-    return ai_reply if ai_reply else "يا مساء الورد! نورت رنجة أبو السيد، أؤمرني أساعدك إزاي؟"
-# ================== WEBHOOK & SERVER ==================
+    if ai_reply:
+        return ai_reply
+
+    # 3. لو الـ AI فشل (يرجع لليدوي كخطة بديلة)
+    if "فسيخ" in q:
+        return "رد يدوي: سعر الفسيخ 460ج"
+        
+    return "يا مساء الفل! نورت رنجة أبو السيد"
+    # ================== WEBHOOK & SERVER ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
     if request.args.get("hub.verify_token") == VERIFY_TOKEN:
@@ -163,4 +144,5 @@ def send_message(user_id, text):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
+
 
