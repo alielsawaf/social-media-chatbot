@@ -1,14 +1,14 @@
 from flask import Flask, request
 import requests
 import os
-
+import google.generativeai as genai
 app = Flask(__name__)
 
 # ================== CONFIG ==================
 PAGE_ACCESS_TOKEN = os.environ.get("PAGE_ACCESS_TOKEN")
 VERIFY_TOKEN = os.environ.get("VERIFY_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-
+genai.configure(api_key=GEMINI_API_KEY)
 # هنا ضفنا كل معلوماتك عشان الـ AI يذاكرها ويرد منها
 DATA_INFO = """
 اسم المصنع: رنجة أبو السيد.
@@ -25,34 +25,25 @@ def get_ai_answer(user_text):
     if not GEMINI_API_KEY:
         return "⚠️ المفتاح ناقص"
 
-    # لستة بكل الموديلات المحتملة (الأحدث فالأقدم)
-    model_names = [
-        "gemini-1.5-flash-latest",
-        "gemini-1.5-flash",
-        "gemini-pro"
-    ]
-    
-    for model in model_names:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
-        payload = {
-            "contents": [{"parts": [{"text": f"أنت خدمة عملاء رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بمصرية: {user_text}"}]}]
-        }
+    try:
+        # هنا بننادي الموديل مباشرة بالمكتبة الرسمية
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
-        try:
-            response = requests.post(url, json=payload, timeout=10)
-            res_data = response.json()
+        prompt = f"أنت موظف شاطر في مصنع رنجة أبو السيد. المعلومات: {DATA_INFO}. رد بلهجة مصرية عامية وبسرعة على: {user_text}"
+        
+        response = model.generate_content(prompt)
+        
+        if response.text:
+            return response.text
             
-            if "candidates" in res_data:
-                return res_data["candidates"][0]["content"]["parts"][0]["text"]
-        except:
-            continue # لو موديل فشل جرب اللي بعده
-
-    # لو كل المحاولات فشلت (الرد الذكي المبرمج)
-    if "فرق" in user_text:
-        return "بص يا غالي، الفريش بيقعد شهر في الثلاجة، أما المجمد فبيقعد 3 شهور في الفريزر. تحب تطلب أياً منهم؟"
-    elif "سعر" in user_text or "بكام" in user_text:
-        return "رنجة أبو السيد بـ 200ج والفسيخ بـ 460ج، تحب نجهزلك أوردر؟"
-    
+    except Exception as e:
+        print(f"Gemini Error: {e}")
+        # الردود الذكية لو الخدمة وقعت
+        if "توصيل" in user_text or "شحن" in user_text:
+            return "أيوه يا فندم بنشحن لجميع المحافظات، أؤمرني محتاج التوصيل لفين؟"
+        elif "سعر" in user_text or "بكام" in user_text:
+            return "الرنجة بـ 200ج والفسيخ بـ 460ج، تحب تطلب كام كيلو؟"
+        
     return "يا مساء الورد! نورت رنجة أبو السيد، أؤمرني أساعدك إزاي؟"
     # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
@@ -91,6 +82,7 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
 
