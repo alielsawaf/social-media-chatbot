@@ -6,10 +6,49 @@ import re
 app = Flask(__name__)
 
 # ================== CONFIG ==================
-PAGE_ACCESS_TOKEN =  "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD"
+PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD"
 VERIFY_TOKEN = "my_secret_token"
 
-# ================== DATA ==================
+# ================== HELPERS ==================
+def normalize(text):
+    return re.sub(r"\s+", " ", text.lower().strip())
+
+FAQ_KEYWORDS = [
+    "ليه", "ازاي", "ايه", "بتفرق", "فرق",
+    "فيها", "دود", "دم", "مضره", "صحيه",
+    "خطر", "امان"
+]
+
+def is_faq_question(text):
+    return any(k in text for k in FAQ_KEYWORDS)
+
+# ================== SENDERS ==================
+def send_message(user_id, text):
+    url = f"https://graph.facebook.com/v18.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
+    payload = {
+        "recipient": {"id": user_id},
+        "message": {"text": text}
+    }
+    requests.post(url, json=payload)
+
+def send_quick_replies(user_id, text, replies):
+    url = f"https://graph.facebook.com/v18.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
+    payload = {
+        "recipient": {"id": user_id},
+        "message": {
+            "text": text,
+            "quick_replies": [
+                {
+                    "content_type": "text",
+                    "title": r,
+                    "payload": r
+                } for r in replies
+            ]
+        }
+    }
+    requests.post(url, json=payload)
+
+# ================== PRODUCTS ==================
 FAQ_MAP = {
   "الرنجة فيها دود": "فندم ده مش دود، ده بيكون طفيليات. الطفيليات في سمكة الرنجة توجد في التجويف البطني لأنها تدخل في عمليات الامتصاص والتمثيل الغذائي للسمكة وهي لا تصيب الإنسان تماماً، وزيادة في الوقاية يتم تجميد الأسماك عند درجة من 35 إلى 40 تحت الصفر لتصبح الطفيليات جزء من الأمعاء ولا تؤثر على آكلها. الدود الحي لو موجود بيكون خطر على صحة الإنسان وبيكون دليل إن السمكة غير صالحة للاستهلاك. السمك زي الإنسان لما بيموت بيمر بمراحل، قبل ظهور دود حي لازم يكون منتفخ ثم متعفن ثم متهتك، وطالما السمكة غير منتفخة ولا متعفنة ولا متهتكة فدي طفيليات طبيعية بيتغذى عليها السمك.",
 
@@ -90,6 +129,8 @@ FAQ_MAP = {
   "نوع السلمون للطهي": "السلمون الفيليه الني."
 }
 
+
+# 2. أسعار المنتجات (يتم الرد بها إذا لم يوجد سؤال عام)
 PRODUCT_MAP = {
   "Smoked Herring with Roe": "💰 سعر رنجة مدخنة مبطرخة مرملة:\nالوزن: 1 KG\nالسعر: 250 EGP ✨",
 
@@ -158,120 +199,113 @@ PRODUCT_MAP = {
   "Salted Mullet with Roe": "💰 سعر فسيخ مبطرخ بدون بكتيريا:\nالوزن: 1 KG\nالسعر: 560 EGP ✨"
 }
 
-# ================== HELPERS ==================
-def normalize(text):
-    text = text.lower()
-    text = re.sub(r"[^\w\s]", "", text)
-    for a, b in {"ة": "ه", "أ": "ا", "إ": "ا", "آ": "ا", "ى": "ي"}.items():
-        text = text.replace(a, b)
-    return text.strip()
-
-def send_message(user_id, text):
-    url = f"https://graph.facebook.com/v18.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
-    payload = {"recipient": {"id": user_id}, "message": {"text": text}}
-    requests.post(url, json=payload)
-
-def send_quick_replies(user_id, text, replies):
-    url = f"https://graph.facebook.com/v18.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
-    payload = {
-        "recipient": {"id": user_id},
-        "message": {
-            "text": text,
-            "quick_replies": [
-                {"content_type": "text", "title": r, "payload": r}
-                for r in replies
-            ]
-        }
-    }
-    requests.post(url, json=payload)
-
-# ================== MAIN LOGIC ==================
-def handle_message(sender, text):
+# ================== BRAIN ==================
+def get_answer(sender, text):
     q = normalize(text)
 
-    # ===== تحية =====
-    if any(w in q for w in ["اهلا", "سلام", "مرحبا", "هاي"]):
-        send_quick_replies(sender, "أهلاً بيك 👋 تحب تسأل عن إيه؟", ["رنجة", "فسيخ", "تونة"])
-        return
+    # ===== رنجة =====
+    if "رنجه" in q or "رنجة" in q:
+
+        if is_faq_question(q):
+
+            if "فرق" in q or "بتفرق" in q:
+                return (
+                    "الفرق بين الرنجة 24 قيراط والعادية 👇\n"
+                    "✔️ 24 قيراط مدخنة مدة أطول\n"
+                    "✔️ ملوحتها أقل\n"
+                    "✔️ ريحتها أخف\n"
+                    "✔️ أنضف في التنضيف\n\n"
+                    "العادية:\n"
+                    "✔️ ملوحتها أعلى\n"
+                    "✔️ سعرها أقل"
+                )
+
+            if "دود" in q:
+                return (
+                    "اطمن 👍\n"
+                    "الرنجة السليمة *مفيهاش دود*\n"
+                    "✔️ الملح والتدخين بيقضوا على الطفيليات\n"
+                    "⚠️ الخطر فقط من التخزين السيئ\n"
+                    "وإحنا بنبيع منتج مضمون 👌"
+                )
+
+        if "24" in q:
+            send_message(sender, PRODUCT_MAP["Smoked Herring 24 Kerat"])
+            return None
+
+        if "فيليه" in q:
+            send_message(sender, PRODUCT_MAP["Smoked Herring Fillet"])
+            return None
+
+        send_quick_replies(
+            sender,
+            "تشكيلة الرنجة 👇",
+            [
+                "سعر رنجة عادية",
+                "سعر رنجة 24 قيراط",
+                "سعر رنجة فيليه",
+                "الفرق بين الرنجة 24 والعادية"
+            ]
+        )
+        return None
 
     # ===== فسيخ =====
     if "فسيخ" in q or "بوري" in q:
+
+        if is_faq_question(q):
+            if "دم" in q:
+                return (
+                    "اللون الغامق في الفسيخ ❗\n"
+                    "✔️ مش دم\n"
+                    "✔️ ده نتيجة التمليح\n"
+                    "⚠️ لو ريحته كريهة أو ملمسه لزج يبقى فاسد\n"
+                    "الفسيخ السليم ريحته قوية لكن مش وحشة 👌"
+                )
+
         if "بنجر" in q:
-            send_message(sender, PRODUCT_MAP["Salted Grey Mullet with Beet Sauce"])
-            return
+            send_message(sender, PRODUCT_MAP["Salted Fish Beet"])
+            return None
+
         if "كاري" in q:
-            send_message(sender, PRODUCT_MAP["Salted Grey Mullet with Curry Sauce"])
-            return
+            send_message(sender, PRODUCT_MAP["Salted Fish Curry"])
+            return None
 
         send_quick_replies(
             sender,
             "عندنا فسيخ بالأنواع دي 👇",
             [
                 "سعر فسيخ بدون بكتيريا",
-                "سعر فسيخ مبطرخ",
                 "سعر فسيخ بالبنجر",
                 "سعر فسيخ بالكاري"
             ]
         )
-        return
+        return None
 
-    # ===== رنجة =====
-    if "رنجه" in q or "رنجة" in q:
-        if "فيليه" in q:
-            send_message(sender, PRODUCT_MAP["Herring Fillets without Oil"])
-            return
-        if "24" in q:
-            send_message(sender, PRODUCT_MAP["Smoked Herring 24 Kerat"])
-            return
+    # ===== تحية =====
+    if q in ["سلام", "السلام عليكم", "اهلا", "أهلا"]:
+        return "أهلاً بيك 👋 تحب تسأل عن رنجة ولا فسيخ؟"
 
-        send_quick_replies(
-            sender,
-            "تشكيلة الرنجة 👇",
-            [
-                "سعر رنجة مدخنة",
-                "سعر رنجة 24 قيراط",
-                "سعر رنجة فيليه"
-            ]
-        )
-        return
-
-    # ===== تونة =====
-    if "تونه" in q or "تونة" in q:
-        send_quick_replies(
-            sender,
-            "أيوه في تونة 👌 تحب إيه؟",
-            [
-                "نوع التونة",
-                "فرق التونة الأبيض والأحمر"
-            ]
-        )
-        return
-
-    # ===== FAQ =====
-    for k, v in FAQ_MAP.items():
-        if normalize(k) in q:
-            send_message(sender, v)
-            return
-
-    send_message(sender, "تحب تسأل عن رنجة ولا فسيخ ولا تونة؟ 😊")
+    return "تحب تسأل عن رنجة ولا فسيخ؟ 😊"
 
 # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
-    if request.args.get("hub.verify_token") == VERIFY_TOKEN:
+    if request.args.get("hub.verify_token") == "verify_token":
         return request.args.get("hub.challenge")
-    return "Unauthorized", 403
+    return "Verification failed"
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    data = request.get_json()
-    if data.get("object") == "page":
-        for entry in data.get("entry", []):
-            for ev in entry.get("messaging", []):
-                if "message" in ev and "text" in ev["message"]:
-                    sender = ev["sender"]["id"]
-                    handle_message(sender, ev["message"]["text"])
+    data = request.json
+    for entry in data.get("entry", []):
+        for msg in entry.get("messaging", []):
+            sender = msg["sender"]["id"]
+            if "text" in msg.get("message", {}):
+                reply = get_answer(sender, msg["message"]["text"])
+                if reply:
+                    send_message(sender, reply)
     return "ok", 200
 
+# ================== RUN ==================
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    app.run(port=5000)
