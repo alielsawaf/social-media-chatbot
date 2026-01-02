@@ -6,7 +6,7 @@ import re
 app = Flask(__name__)
 
 # ================== CONFIG ==================
-PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD"
+PAGE_ACCESS_TOKEN =  "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD"
 VERIFY_TOKEN = "my_secret_token"
 
 # ================== DATA ==================
@@ -158,61 +158,102 @@ PRODUCT_MAP = {
   "Salted Mullet with Roe": "💰 سعر فسيخ مبطرخ بدون بكتيريا:\nالوزن: 1 KG\nالسعر: 560 EGP ✨"
 }
 
-# ================== NLP HELPERS ==================
+# ================== HELPERS ==================
 def normalize(text):
     text = text.lower()
     text = re.sub(r"[^\w\s]", "", text)
-    replacements = {
-        "ة": "ه", "أ": "ا", "إ": "ا", "آ": "ا", "ى": "ي"
-    }
-    for k, v in replacements.items():
-        text = text.replace(k, v)
+    for a, b in {"ة": "ه", "أ": "ا", "إ": "ا", "آ": "ا", "ى": "ي"}.items():
+        text = text.replace(a, b)
     return text.strip()
 
-def smart_faq_match(q):
-    for key, answer in FAQ_MAP.items():
-        if normalize(key) in q or q in normalize(key):
-            return answer
-    return None
+def send_message(user_id, text):
+    url = f"https://graph.facebook.com/v18.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
+    payload = {"recipient": {"id": user_id}, "message": {"text": text}}
+    requests.post(url, json=payload)
+
+def send_quick_replies(user_id, text, replies):
+    url = f"https://graph.facebook.com/v18.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
+    payload = {
+        "recipient": {"id": user_id},
+        "message": {
+            "text": text,
+            "quick_replies": [
+                {"content_type": "text", "title": r, "payload": r}
+                for r in replies
+            ]
+        }
+    }
+    requests.post(url, json=payload)
 
 # ================== MAIN LOGIC ==================
-def get_answer(text):
+def handle_message(sender, text):
     q = normalize(text)
 
-    # تحية
-    if any(w in q for w in ["اهلا", "سلام", "مرحبا", "هاي", "صباح", "مساء"]):
-        return "أهلاً بيك في رنجة أبو السيد 👋 تحب أساعدك في إيه؟"
+    # ===== تحية =====
+    if any(w in q for w in ["اهلا", "سلام", "مرحبا", "هاي"]):
+        send_quick_replies(sender, "أهلاً بيك 👋 تحب تسأل عن إيه؟", ["رنجة", "فسيخ", "تونة"])
+        return
 
-    # شكر
-    if any(w in q for w in ["شكرا", "تمام", "تسلم", "ميرسي"]):
-        return "تحت أمرك دايمًا 🌹"
+    # ===== فسيخ =====
+    if "فسيخ" in q or "بوري" in q:
+        if "بنجر" in q:
+            send_message(sender, PRODUCT_MAP["Salted Grey Mullet with Beet Sauce"])
+            return
+        if "كاري" in q:
+            send_message(sender, PRODUCT_MAP["Salted Grey Mullet with Curry Sauce"])
+            return
 
-    # FAQ ذكي (أولوية قصوى)
-    faq_answer = smart_faq_match(q)
-    if faq_answer:
-        return faq_answer
+        send_quick_replies(
+            sender,
+            "عندنا فسيخ بالأنواع دي 👇",
+            [
+                "سعر فسيخ بدون بكتيريا",
+                "سعر فسيخ مبطرخ",
+                "سعر فسيخ بالبنجر",
+                "سعر فسيخ بالكاري"
+            ]
+        )
+        return
 
-    # منيو
-    if "منيو" in q or "اسعار" in q:
-        return f"📋 منيو كامل:\n{FAQ_MAP['منيو']}"
-
-    # رنجة
+    # ===== رنجة =====
     if "رنجه" in q or "رنجة" in q:
         if "فيليه" in q:
-            return PRODUCT_MAP["Herring Fillets without Oil"]
+            send_message(sender, PRODUCT_MAP["Herring Fillets without Oil"])
+            return
         if "24" in q:
-            return PRODUCT_MAP["Smoked Herring 24 Kerat"]
-        return PRODUCT_MAP["Smoked Herring"]
+            send_message(sender, PRODUCT_MAP["Smoked Herring 24 Kerat"])
+            return
 
-    # فسيخ
-    if "فسيخ" in q or "بوري" in q:
-        return PRODUCT_MAP["Salted Mullet without Bacteria"]
+        send_quick_replies(
+            sender,
+            "تشكيلة الرنجة 👇",
+            [
+                "سعر رنجة مدخنة",
+                "سعر رنجة 24 قيراط",
+                "سعر رنجة فيليه"
+            ]
+        )
+        return
 
-    # تونة
-    if "تونه" in q or "تونه" in q:
-        return FAQ_MAP["الفرق بين لحم التونة الابيض والاحمر"]
+    # ===== تونة =====
+    if "تونه" in q or "تونة" in q:
+        send_quick_replies(
+            sender,
+            "أيوه في تونة 👌 تحب إيه؟",
+            [
+                "نوع التونة",
+                "فرق التونة الأبيض والأحمر"
+            ]
+        )
+        return
 
-    return "ممكن توضحلي أكتر؟ 😊 تحب سعر ولا فرق ولا منيو؟"
+    # ===== FAQ =====
+    for k, v in FAQ_MAP.items():
+        if normalize(k) in q:
+            send_message(sender, v)
+            return
+
+    send_message(sender, "تحب تسأل عن رنجة ولا فسيخ ولا تونة؟ 😊")
 
 # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
@@ -229,17 +270,8 @@ def webhook():
             for ev in entry.get("messaging", []):
                 if "message" in ev and "text" in ev["message"]:
                     sender = ev["sender"]["id"]
-                    reply = get_answer(ev["message"]["text"])
-                    send_message(sender, reply)
+                    handle_message(sender, ev["message"]["text"])
     return "ok", 200
-
-def send_message(user_id, text):
-    url = f"https://graph.facebook.com/v18.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
-    payload = {
-        "recipient": {"id": user_id},
-        "message": {"text": text}
-    }
-    requests.post(url, json=payload)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
