@@ -89,8 +89,14 @@ PRODUCT_MAP = {
 
 # ================== LOGIC ==================
 def normalize(text):
+    # تحويل الأرقام العربية إلى إنجليزية لضمان عمل العمليات الحسابية والبحث
+    arabic_numbers = '٠١٢٣٤٥٦٧٨٩'
+    english_numbers = '0123456789'
+    translation_table = str.maketrans(arabic_numbers, english_numbers)
+    
     return (
         text.lower()
+        .translate(translation_table)
         .replace("ة", "ه")
         .replace("أ", "ا")
         .replace("إ", "ا")
@@ -329,3 +335,4 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
