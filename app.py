@@ -1,6 +1,7 @@
 from flask import Flask, request
 import requests
 import os
+import re
 
 app = Flask(__name__)
 
@@ -9,7 +10,6 @@ PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFe
 VERIFY_TOKEN = "my_secret_token"
 
 # ================== DATA ==================
-# 1. الأسئلة العامة (لها الأولوية القصوى)
 FAQ_MAP = {
   "الرنجة فيها دود": "فندم ده مش دود، ده بيكون طفيليات. الطفيليات في سمكة الرنجة توجد في التجويف البطني لأنها تدخل في عمليات الامتصاص والتمثيل الغذائي للسمكة وهي لا تصيب الإنسان تماماً، وزيادة في الوقاية يتم تجميد الأسماك عند درجة من 35 إلى 40 تحت الصفر لتصبح الطفيليات جزء من الأمعاء ولا تؤثر على آكلها. الدود الحي لو موجود بيكون خطر على صحة الإنسان وبيكون دليل إن السمكة غير صالحة للاستهلاك. السمك زي الإنسان لما بيموت بيمر بمراحل، قبل ظهور دود حي لازم يكون منتفخ ثم متعفن ثم متهتك، وطالما السمكة غير منتفخة ولا متعفنة ولا متهتكة فدي طفيليات طبيعية بيتغذى عليها السمك.",
 
@@ -90,8 +90,6 @@ FAQ_MAP = {
   "نوع السلمون للطهي": "السلمون الفيليه الني."
 }
 
-
-# 2. أسعار المنتجات (يتم الرد بها إذا لم يوجد سؤال عام)
 PRODUCT_MAP = {
   "Smoked Herring with Roe": "💰 سعر رنجة مدخنة مبطرخة مرملة:\nالوزن: 1 KG\nالسعر: 250 EGP ✨",
 
@@ -160,130 +158,73 @@ PRODUCT_MAP = {
   "Salted Mullet with Roe": "💰 سعر فسيخ مبطرخ بدون بكتيريا:\nالوزن: 1 KG\nالسعر: 560 EGP ✨"
 }
 
+# ================== UTILS ==================
+def normalize(text):
+    if not text: return ""
+    text = text.lower().strip()
+    # توحيد الحروف العربية المتشابهة
+    text = re.sub(r"[أإآ]", "ا", text)
+    text = re.sub(r"ة", "ه", text)
+    text = re.sub(r"[يى]", "ي", text)
+    # حذف علامات الترقيم
+    text = re.sub(r"[^\w\s]", "", text)
+    return text
 
 # ================== LOGIC ==================
-def normalize(text):
-    return (
-        text.lower()
-        .replace("ة", "ه")
-        .replace("أ", "ا")
-        .replace("إ", "ا")
-        .replace("آ", "ا")
-        .strip()
-    )
-
-
 def get_answer(text):
     q = normalize(text)
-
+    
     # 1. الترحيب والشكر
-    greetings = ["اهلا", "سلام", "مساء", "صباح", "مرحبا", "هاي", "ازيك"]
-    thanks = ["شكرا", "شكر", "تمام", "ميرسي", "تسلم", "جزاك", "ماشي"]
+    if any(w in q for w in ["اهلا", "سلام", "مرحبا", "هاي", "ازيك", "صباح", "مساء"]):
+        return "أهلاً بك في رنجة أبو السيد 👋 نورتنا.. أساعد حضرتك في الأسعار ولا المنيو ولا عندك استفسار معين؟"
+    
+    if any(w in q for w in ["شكرا", "تسلم", "جزاك", "ميرسي", "تمام", "ماشي"]):
+        return "تحت أمرك يا فندم 🌹 لو احتجت أي حاجة تانية ابعتلنا في أي وقت."
 
-    if any(w in q for w in thanks):
-        return "تحت أمرك يا فندم 🌹 لو احتاجت أي حاجة ابعتلنا في أي وقت."
+    # 2. الشكاوي والاستفسارات العاجلة (أولوية قصوى)
+    if any(w in q for w in ["دود", "طفيليات", "بايظه", "وحشه"]):
+        return FAQ_MAP["الشكاوى"]
+    
+    if "دم" in q and "فسيخ" in q:
+        return FAQ_MAP["دم_الفسيخ"]
 
-    if any(w in q for w in greetings):
-        return "أهلاً بك في رنجة أبو السيد 👋 نورتنا.. أساعد حضرتك ازاي؟"
+    # 3. المنيو والعناوين
+    if any(w in q for w in ["منيو", "كتالوج", "اسعار", "بكام", "قائمه"]):
+        return FAQ_MAP["المنيو"]
+    
+    if any(w in q for w in ["عنوان", "مكان", "فرع", "فروع", "مواعيد", "فاتحين"]):
+        return FAQ_MAP["المواقع"]
 
-    if "منيو" in q or "كتالوج" in q:
-        return f"ده لينك منيو المنتجات بتاعتنا كاملة بالأسعار:\n{FAQ_MAP['منيو']}"
-
-    # 2. الشكاوي الحساسة (أولوية قصوى)
-    if any(w in q for w in ["دود", "مدود", "طفيليات"]):
-        return FAQ_MAP["الرنجة فيها دود"]
-
-    if "دم" in q:
-        return FAQ_MAP["ليه الفسيخ بيكون في دم"]
-
-    # 3. الشرح والفرق
-    if any(w in q for w in ["ليه", "سبب", "فرق", "الفرق", "ازاي", "ازي"]):
-        if "فيليه" in q and "ناشف" in q:
-            return FAQ_MAP["ليه الرنجة الفيليه ناشفة"]
-        if "24" in q:
-            return FAQ_MAP["الفرق بين الرنجة العادية وعيار 24"]
-        if "تون" in q or "تونه" in q:
-            return FAQ_MAP["الفرق بين لحم التونة الابيض والاحمر"]
-        if "اصليه" in q or "اعرف" in q:
-            return FAQ_MAP["ازاي اتأكد ان الرنجة دي رنجة ابو السيد"]
-
-    # ================== 🔥 ذكاء المنتجات المحددة 🔥 ==================
-
-    # فسيخ بصوصات
-    if "فسيخ" in q:
-        if "بنجر" in q:
-            return PRODUCT_MAP["Salted Grey Mullet with Beet Sauce"]
-        if "كاري" in q:
-            return PRODUCT_MAP["Salted Grey Mullet with Curry Sauce"]
-        if "فلفل" in q:
-            return PRODUCT_MAP["Salted Grey Mullet with Pepper Sauce"]
-
-        return (
-            f"💰 أسعار الفسيخ والبوري:\n"
-            f"- {PRODUCT_MAP['Salted Mullet without Bacteria']}\n"
-            f"- {PRODUCT_MAP['Salted Mullet with Roe']}\n"
-            f"- {PRODUCT_MAP['Salted Grey Mullet with Vegetable Oil']}\n"
-            f"- {PRODUCT_MAP['Salted Grey Mullet with Smoked Oil']}"
-        )
-
-    # رنجة فيليه وصوصات
+    # 4. منطق المنتجات الذكي (البحث المركب)
+    # الرنجة
     if "رنج" in q:
+        if "24" in q: return PRODUCT_MAP["رنجة_24"]
         if "فيليه" in q:
-            if "فلفل" in q:
-                return PRODUCT_MAP["Herring Fillets with Pepper Sauce"]
-            if "كاري" in q:
-                return PRODUCT_MAP["Herring Fillets with Curry Sauce"]
-            if "سكر" in q:
-                return PRODUCT_MAP["Herring Fillets with Sweet Sauce"]
-            return PRODUCT_MAP["Herring Fillets without Oil"]
+            if "فلفل" in q: return PRODUCT_MAP["رنجة_صوص_فلفل"]
+            return PRODUCT_MAP["رنجة_فيليه"]
+        return f"💰 متاح عندنا أنواع رنجة كتير (عادية - 24 قيراط - فيليه - فاكيوم).\nتحب أبعتلك سعر نوع معين منهم؟"
 
-        if "24" in q:
-            return PRODUCT_MAP["Smoked Herring 24 Kerat"]
+    # الفسيخ
+    if "فسيخ" in q or "بوري" in q:
+        if "مبطرخ" in q: return PRODUCT_MAP["فسيخ_مبطرخ"]
+        return PRODUCT_MAP["فسيخ_سادة"]
 
-        return (
-            f"💰 تشكيلة الرنجة عندنا:\n"
-            f"- {PRODUCT_MAP['Smoked Herring']}\n"
-            f"- {PRODUCT_MAP['Smoked Herring 24 Kerat']}\n"
-            f"- {PRODUCT_MAP['Smoked Herring in Vacuum Packing']}\n"
-            f"- {PRODUCT_MAP['Gutted Smoked Vacuumed Herring']}"
-        )
-
-    # بطارخ
+    # البطارخ والتونة
     if "بطارخ" in q:
-        if "عسل" in q:
-            return PRODUCT_MAP["Herring Roe with Honey Sauce"]
-        if "برتقال" in q:
-            return PRODUCT_MAP["Herring Roe with Orange Sauce"]
-        if "نشو" in q:
-            return PRODUCT_MAP["Herring Roe White"]
+        return PRODUCT_MAP["بطارخ_رنجة"]
+    
+    if "تون" in q:
+        return FAQ_MAP["التونة"]
 
-        return (
-            f"💰 أنواع البطارخ المتاحة:\n"
-            f"- {PRODUCT_MAP['Herring Roe with Vegetable Oil']}\n"
-            f"- {PRODUCT_MAP['Herring Roe with Orange Sauce']}\n"
-            f"- {PRODUCT_MAP['Herring Roe with Honey Sauce']}"
-        )
+    # 5. استفسارات إدارية
+    if "جمله" in q: return FAQ_MAP["الجملة"]
+    if "شغل" in q or "توظيف" in q or "اتش ار" in q: return FAQ_MAP["التوظيف"]
+    if "تصدير" in q: return FAQ_MAP["التصدير"]
 
-    # ماكريل
-    if "ماكريل" in q:
-        return (
-            f"💰 أسعار الماكريل:\n"
-            f"- {PRODUCT_MAP['Gutted Smoked Mackerel Salted']}\n"
-            f"- {PRODUCT_MAP['Mackerel Fillets Vacuumed']}"
-        )
+    # 6. الرد الافتراضي
+    return "نورتنا في رنجة أبو السيد! 😊 عشان أقدر أساعدك صح، تحب تعرف (الأسعار - المنيو - فروعنا - ولا عندك شكوى)؟"
 
-    # تونة
-    if "تون" in q or "تونه" in q:
-        if any(w in q for w in ["فرق", "ابيض", "احمر"]):
-            return FAQ_MAP["الفرق بين لحم التونة الابيض والاحمر"]
-        return "💰 تونة أبو السيد يلوفين – جاهزة للأكل. تحب أبعتلك المنيو؟"
-
-    # متابعة ذكية
-    if q in ["اه", "ايوه", "ياريت"]:
-        return "تمام 👌 تحب تشوف أسعار رنجة ولا فسيخ ولا بطارخ؟"
-
-    return "ممكن توضحلي أكتر تحب تعرف إيه؟ (سعر – فرق – منيو)"
-  # ================== WEBHOOK ==================
+# ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
     if request.args.get("hub.verify_token") == VERIFY_TOKEN:
@@ -306,22 +247,12 @@ def webhook():
 def send_message(user_id, text):
     url = f"https://graph.facebook.com/v12.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
     payload = {"recipient": {"id": user_id}, "message": {"text": text}}
-    requests.post(url, json=payload)
+    try:
+        requests.post(url, json=payload)
+    except Exception as e:
+        print(f"Error sending message: {e}")
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    # استخدام التوريد من البيئة أو افتراض 8080
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
