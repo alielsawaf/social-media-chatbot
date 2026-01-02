@@ -6,10 +6,10 @@ import re
 app = Flask(__name__)
 
 # ================== CONFIG ==================
-PAGE_ACCESS_TOKEN =  "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD" 
+PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD"
 VERIFY_TOKEN = "my_secret_token"
 
-# ================== DATA (البيانات منظمة) ==================
+# ================== DATA ==================
 FAQ_MAP = {
   "الرنجة فيها دود": "فندم ده مش دود، ده بيكون طفيليات. الطفيليات في سمكة الرنجة توجد في التجويف البطني لأنها تدخل في عمليات الامتصاص والتمثيل الغذائي للسمكة وهي لا تصيب الإنسان تماماً، وزيادة في الوقاية يتم تجميد الأسماك عند درجة من 35 إلى 40 تحت الصفر لتصبح الطفيليات جزء من الأمعاء ولا تؤثر على آكلها. الدود الحي لو موجود بيكون خطر على صحة الإنسان وبيكون دليل إن السمكة غير صالحة للاستهلاك. السمك زي الإنسان لما بيموت بيمر بمراحل، قبل ظهور دود حي لازم يكون منتفخ ثم متعفن ثم متهتك، وطالما السمكة غير منتفخة ولا متعفنة ولا متهتكة فدي طفيليات طبيعية بيتغذى عليها السمك.",
 
@@ -158,64 +158,68 @@ PRODUCT_MAP = {
   "Salted Mullet with Roe": "💰 سعر فسيخ مبطرخ بدون بكتيريا:\nالوزن: 1 KG\nالسعر: 560 EGP ✨"
 }
 
-# ================== LOGIC (الذكاء المطور) ==================
+# ================== NLP HELPERS ==================
 def normalize(text):
-    if not text: return ""
-    text = text.lower().strip()
-    text = re.sub(r"[أإآ]", "ا", text)
-    text = re.sub(r"ة", "ه", text)
-    text = re.sub(r"[يى]", "ي", text)
-    # الاحتفاظ بالأرقام والحروف فقط
-    text = re.sub(r"[^\w\s\d]", "", text)
-    return text
+    text = text.lower()
+    text = re.sub(r"[^\w\s]", "", text)
+    replacements = {
+        "ة": "ه", "أ": "ا", "إ": "ا", "آ": "ا", "ى": "ي"
+    }
+    for k, v in replacements.items():
+        text = text.replace(k, v)
+    return text.strip()
 
+def smart_faq_match(q):
+    for key, answer in FAQ_MAP.items():
+        if normalize(key) in q or q in normalize(key):
+            return answer
+    return None
+
+# ================== MAIN LOGIC ==================
 def get_answer(text):
     q = normalize(text)
-    
-    # 1. الترحيب (عشان ميردش رد آلي جاف)
-    if any(w in q for w in ["اهلا", "سلام", "مرحبا", "هاي", "ازيك"]):
-        return "أهلاً بك في رنجة أبو السيد 👋 أساعد حضرتك في الأسعار ولا المنيو؟"
 
-    # 2. البحث عن كلمات "سعرية" محددة (Priority 1)
-    # لو العميل كتب "24" في أي سياق، رد بسعر الـ 24 فوراً
-    if "24" in q:
-        return PRICES["رنجة_24"]
-    
-    if "بنجر" in q:
-        return PRICES["فسيخ_بنجر"]
-    
-    if "فيليه" in q:
-        return PRICES["رنجة_فيليه"]
+    # تحية
+    if any(w in q for w in ["اهلا", "سلام", "مرحبا", "هاي", "صباح", "مساء"]):
+        return "أهلاً بيك في رنجة أبو السيد 👋 تحب أساعدك في إيه؟"
 
-    # 3. الأسئلة العامة (Priority 2)
-    if any(w in q for w in ["منيو", "اسعار", "بكام", "قائمه", "كتالوج"]):
-        return FAQ_MAP["المنيو"]
-    
-    if any(w in q for w in ["عنوان", "مكان", "فرع", "فين"]):
-        return FAQ_MAP["فروع"]
+    # شكر
+    if any(w in q for w in ["شكرا", "تمام", "تسلم", "ميرسي"]):
+        return "تحت أمرك دايمًا 🌹"
 
-    # 4. الأقسام العامة (Priority 3)
-    if "رنج" in q:
-        return f"💰 متاح عندنا أنواع رنجة كتير:\n- {PRICES['رنجة_عادية']}\n- {PRICES['رنجة_24']}\nتحب تعرف سعر نوع تاني؟"
+    # FAQ ذكي (أولوية قصوى)
+    faq_answer = smart_faq_match(q)
+    if faq_answer:
+        return faq_answer
 
+    # منيو
+    if "منيو" in q or "اسعار" in q:
+        return f"📋 منيو كامل:\n{FAQ_MAP['منيو']}"
+
+    # رنجة
+    if "رنجه" in q or "رنجة" in q:
+        if "فيليه" in q:
+            return PRODUCT_MAP["Herring Fillets without Oil"]
+        if "24" in q:
+            return PRODUCT_MAP["Smoked Herring 24 Kerat"]
+        return PRODUCT_MAP["Smoked Herring"]
+
+    # فسيخ
     if "فسيخ" in q or "بوري" in q:
-        return f"💰 أسعار الفسيخ:\n- {PRICES['فسيخ_سادة']}\n- {PRICES['فسيخ_بنجر']}"
+        return PRODUCT_MAP["Salted Mullet without Bacteria"]
 
-    if "بطارخ" in q:
-        return PRICES["بطارخ"]
+    # تونة
+    if "تونه" in q or "تونه" in q:
+        return FAQ_MAP["الفرق بين لحم التونة الابيض والاحمر"]
 
-    if "شكرا" in q or "تسلم" in q:
-        return "العفو يا فندم، في الخدمة دائماً 🌹"
-
-    # 5. الرد في حالة عدم الفهم (بدل الرد التقليدي الممل)
-    return "نورتنا! 😊 تحب أبعتلك المنيو كامل بالأسعار؟ ولا بتسأل عن صنف معين (رنجة، فسيخ، بطارخ)؟"
+    return "ممكن توضحلي أكتر؟ 😊 تحب سعر ولا فرق ولا منيو؟"
 
 # ================== WEBHOOK ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
     if request.args.get("hub.verify_token") == VERIFY_TOKEN:
         return request.args.get("hub.challenge")
-    return "failed", 403
+    return "Unauthorized", 403
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -223,18 +227,19 @@ def webhook():
     if data.get("object") == "page":
         for entry in data.get("entry", []):
             for ev in entry.get("messaging", []):
-                sender = ev["sender"]["id"]
                 if "message" in ev and "text" in ev["message"]:
-                    msg_text = ev["message"]["text"]
-                    reply = get_answer(msg_text)
+                    sender = ev["sender"]["id"]
+                    reply = get_answer(ev["message"]["text"])
                     send_message(sender, reply)
     return "ok", 200
 
 def send_message(user_id, text):
-    url = f"https://graph.facebook.com/v12.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
-    payload = {"recipient": {"id": user_id}, "message": {"text": text}}
+    url = f"https://graph.facebook.com/v18.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
+    payload = {
+        "recipient": {"id": user_id},
+        "message": {"text": text}
+    }
     requests.post(url, json=payload)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
