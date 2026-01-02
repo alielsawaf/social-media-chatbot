@@ -7,9 +7,7 @@ app = Flask(__name__)
 # ================== CONFIG ==================
 PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD"
 VERIFY_TOKEN = "my_secret_token"
-
 # ================== DATA (FAQ_MAP & PRODUCT_MAP) ==================
-# ... (نفس القواميس التي وضعتها أنت بدون تغيير) ...
 FAQ_MAP = {
   "الرنجة فيها دود": "يا فندم ده مش دود، ده بيكون طفيليات. الطفيليات في سمكة الرنجة توجد في التجويف البطني لأنها تدخل في عمليات الامتصاص والتمثيل الغذائي للسمكة وهي لا تصيب الإنسان تماماً، وزيادة في الوقاية يتم تجميد الأسماك عند درجة من 35 إلى 40 تحت الصفر لتصبح الطفيليات جزء من الأمعاء ولا تؤثر على آكلها. الدود الحي لو موجود بيكون خطر على صحة الإنسان وبيكون دليل إن السمكة غير صالحة للاستهلاك. السمك زي الإنسان لما بيموت بيمر بمراحل، قبل ظهور دود حي لازم يكون منتفخ ثم متعفن ثم متهتك، وطالما السمكة غير منتفخة ولا متعفنة ولا متهتكة فدي طفيليات طبيعية بيتغذى عليها السمك.",
 
@@ -448,3 +446,4 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
