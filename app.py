@@ -7,154 +7,86 @@ app = Flask(__name__)
 # ================== CONFIG ==================
 PAGE_ACCESS_TOKEN = "EAARosZC3fHjUBQNm1eADUNlWqXKJZAtNB4w9upKF3sLLcZCdz14diiyFFeSipgiEi4Vx1PZAvu9b46xPcHv2wjIekD8LZAhDuAqgSOcrAiqzZBXr3Unk5k269G26dSMZB1wsiCvazanjVWcgdoh8M6AzkPn4xzQUUUQ8o3XLJ0V5s7MfnZAyZAzWF3VBDvP4IWFX5050XCmWWGQZDZD"
 VERIFY_TOKEN = "my_secret_token"
+
 # ================== DATA (FAQ_MAP & PRODUCT_MAP) ==================
 FAQ_MAP = {
   "الرنجة فيها دود": "يا فندم ده مش دود، ده بيكون طفيليات. الطفيليات في سمكة الرنجة توجد في التجويف البطني لأنها تدخل في عمليات الامتصاص والتمثيل الغذائي للسمكة وهي لا تصيب الإنسان تماماً، وزيادة في الوقاية يتم تجميد الأسماك عند درجة من 35 إلى 40 تحت الصفر لتصبح الطفيليات جزء من الأمعاء ولا تؤثر على آكلها. الدود الحي لو موجود بيكون خطر على صحة الإنسان وبيكون دليل إن السمكة غير صالحة للاستهلاك. السمك زي الإنسان لما بيموت بيمر بمراحل، قبل ظهور دود حي لازم يكون منتفخ ثم متعفن ثم متهتك، وطالما السمكة غير منتفخة ولا متعفنة ولا متهتكة فدي طفيليات طبيعية بيتغذى عليها السمك.",
-
   "منيو": "ده لينك منيو المنتجات بتاعتنا: https://heyzine.com/flip-book/31946f16d5.html",
-
   "ازاي اتأكد ان الرنجة دي رنجة ابو السيد": "حضرتك حاول شراء رنجة أبو السيد من مصادر موثوقة لضمان حصولك على المنتج الأصلي.",
-
   "الجملة او اسعار الجملة": "للاستفسار وطلب المساعدة يرجى الاتصال على أرقام المصنع: 01211113882",
-
   "السندوتشات": "منيو الساندويتشات والسلطة غير متاح حالياً ولا يوجد توصيل للساندويتشات والسلطة.",
-
   "السلطة": "منيو الساندويتشات والسلطة غير متاح حالياً ولا يوجد توصيل للساندويتشات والسلطة.",
-
   "مواعيد الفروع": "مواعيد العمل من الساعة 10 صباحاً حتى الساعة 12 منتصف الليل.",
-
   "التصدير": "حضرتك تواصل واتساب مع الأستاذ أحمد على رقم 01272475555 وهو هيساعد حضرتك.",
-
   "رقم ادارة المشتريات": "رقم إدارة المشتريات: 01223066445",
-
   "التوظيف": "رقم إدارة الـ HR في بورسعيد: 01200056103",
-
   "ممكن اشوي الرنجة": "لا يوجد رنجة للشوي ولا تتعرض لأي حرارة، رنجة أبو السيد جاهزة للأكل مباشرة ولا يمكن دهنها بالزيت.",
-
   "الفرق بين الرنجة المجمدة والفريش": "الرنجة المجمدة تحفظ في درجة حرارة -18 وصلاحيتها 3 شهور ويتم حفظها في التجميد. الرنجة الفريش تحفظ في درجة حرارة من 0 إلى 4 وصلاحيتها شهر ويتم حفظها في التبريد.",
-
   "وزن كرتونة الرنجة المجمدة": "وزن كرتونة الرنجة المجمدة بيكون من 7.5 إلى 8 كيلو يا فندم.",
-
   "الفرق بين الكيس الاسود والجولد فاكيوم في الفسيخ": "الأحجام الصغيرة بتكون في التغليف الجولد فاكيوم بحد أقصى 600 جرام، والأحجام الأكبر بتكون في التغليف الأسود وممكن توصل لكيلو أو كيلو و200 أو 800 جرام.",
-
   "الفرق بين الرنجة العادية وعيار 24": "عيار 24 عدد ساعات التدخين فيه أطول، حجم السمكة أصغر، وطعم التدخين معزز أكثر بسبب زيادة ساعات التدخين.",
-
   "كيفية الاحتفاظ بالرنجة بعد الشراء": "يفضل حفظ الرنجة في الفريزر بعد الشراء.",
-
   "يعني ايه رنجة فاكيوم": "رنجة مغلفة في عبوات مفرغة الهواء.",
-
   "الفسيخ بيتملح ازاي": "الفسيخ يتم تصنيعه من سمك البوري، يتم تمليحه فريش لوقف النمو البكتيري، تمليح جاف، ويحفظ في ثلاجات بدرجات حرارة من 0 إلى 4.",
-
   "الفرق بين لحم التونة الابيض والاحمر": "اللحم الأبيض أفتح من الأحمر لأن اللون الأحمر ناتج عن الميوجلوبين والهيموجلوبين، واللحم الأحمر يحتوي على نسبة بروتين أعلى ويكون طري أكثر.",
-
   "ليه الفسيخ بيكون في دم": "السمكة جاهزة للأكل، والدم بيكون نتيجة التمليح الفريش والتجميد، وعند فك التجميد بتظهر السوائل.",
-
   "ليه الرنجة الفيليه ناشفة": "الرنجة الفيليه بتكون مخلية وبتاخد 3 طبقات تدخين لتعزيز الطعم وده بيخليها أنشف شوية.",
-
   "الفرق بين الرنجة الفيليه والعادية": "الفيليه مخلية وتمر بمراحل تمليح وتدخين مكثف و3 طبقات سموك، وبتكون أنشف وطعمها مختلف.",
-
   "مدير الحسابات": "الأستاذ محمد الشماع مدير الحسابات، رقم التواصل: 01204464066",
-
   "توريد للفنادق والمطاعم": "الأستاذ بلال مسؤول التوريد، رقم التواصل: 01221093951",
-
   "الفرق بين السلمون الفاكيوم والكيس الاسود": "الاختلاف في لون اللحم بسبب طريقة التدخين والتمليح والطهي وده بيأثر على الطعم.",
-
   "التونة مستوردة ولا مصري": "الكانز مستورد لكن التونة نفسها مصرية ويتم صيدها من البحر الأبيض المتوسط.",
-
   "ليه المنتجات غالية": "لأننا بنضمن جودة عالية وطريقة تمليح وتدخين مختلفة.",
-
   "يعني ايه فاكيوم": "مغلف في عبوات مفرغة الهواء.",
-
   "نوع التونة": "تونة يلوفين.",
-
   "بتصطادوا التونة منين": "من مصر من البحر الأبيض المتوسط.",
-
   "التونة زيت ولا مياه": "كل التونة معبأة في زيت نباتي فقط.",
-
   "هل في مواد حافظة": "كل منتجاتنا بدون مواد حافظة.",
-
   "هل ممكن اسخن الرنجة": "رنجة أبو السيد لا يمكن تسخينها أو طهيها، هي جاهزة للأكل.",
-
   "توابل الماكريل الفيليه": "فلفل أسود وفلفل أبيض.",
-
   "بطارخ البوري بالزبدة": "بتكون بطارخ بيضاء نشو.",
-
   "انواع بطارخ الرنجة": "نوع مرملة مهروسة ونوع مرملة كاملة.",
-
   "هل التونة المطهية جاهزة للاكل": "التونة المطهية جاهزة للأكل بدون زيت أو مياه ومحفوظة فاكيوم وبأوزان مختلفة.",
-
   "هل في سمك مجمد بدون تصنيع": "لا يوجد سمك مجمد بدون تصنيع في المصنع.",
-
   "نوع السلمون للطهي": "السلمون الفيليه الني."
 }
 
 PRODUCT_MAP = {
   "Smoked Herring with Roe": "💰 سعر رنجة مدخنة مبطرخة مرملة:\nالوزن: 1 KG\nالسعر: 250 EGP ✨",
-
   "Smoked Herring": "💰 سعر رنجة مدخنة:\nالوزن: 1 KG\nالسعر: 200 EGP ✨",
-
   "Smoked Herring 24 Kerat": "💰 سعر رنجة مدخنة 24 قيراط:\nالوزن: 1 KG\nالسعر: 300 EGP ✨",
-
   "Smoked Herring 24 Kerat with Roe": "💰 سعر رنجة مدخنة مبطرخة مرملة 24 قيراط:\nالوزن: 1 KG\nالسعر: 320 EGP ✨",
-
   "Gutted Smoked Vacuumed Herring": "💰 سعر رنجة مدخنة منزوعة الأحشاء فاكيوم:\nالوزن: 1 KG\nالسعر: 300 EGP ✨",
-
   "Smoked Vacuumed Herring with Roe": "💰 سعر رنجة مبطرخة مرملة فاكيوم:\nالوزن: 1 KG\nالسعر: 300 EGP ✨",
-
   "Smoked Herring in Vacuum Packing": "💰 سعر رنجة مدخنة فاكيوم:\nالوزن: 1 KG\nالسعر: 275 EGP ✨",
-
   "Herring Fillets without Oil": "💰 سعر رنجة فيليه بدون زيت:\nالوزن: 1 KG\nالسعر: 600 EGP ✨",
-
   "Herring Fillets with Pepper Sauce and Caviar": "💰 سعر رنجة فيليه بصوص الفلفل والكافيار:\nالوزن: 200 G\nالسعر: 150 EGP ✨",
-
   "Herring Fillets with Sweet Sauce": "💰 سعر رنجة فيليه بصوص السكر:\nالوزن: 230 G\nالسعر: 180 EGP ✨",
-
   "Herring Fillets with Curry Sauce": "💰 سعر رنجة فيليه بصوص الكاري:\nالوزن: 250 G\nالسعر: 250 EGP ✨",
-
   "Herring Fillets with Pepper Sauce": "💰 سعر رنجة فيليه بصوص الفلفل:\nالوزن: 250 G\nالسعر: 250 EGP ✨",
-
   "Herring Fillets with Vegetable Oil": "💰 سعر رنجة فيليه بالزيت النباتي:\nالوزن: 250 G\nالسعر: 250 EGP ✨",
-
   "Smoked Herring Fillets": "💰 سعر رنجة فيليه مدخنة:\nالوزن: 125 G\nالسعر: 85 EGP ✨",
-
   "Herring with Caviar Spread 200": "💰 سعر رنجة مع كافيار سبريد:\nالوزن: 200 G\nالسعر: 70 EGP ✨",
-
   "Herring with Caviar Spread 130": "💰 سعر رنجة مع كافيار سبريد:\nالوزن: 130 G\nالسعر: 70 EGP ✨",
-
   "Herring with Caviar Spread Tube": "💰 سعر رنجة مع كافيار سبريد تيوب:\nالوزن: 100 G\nالسعر: 70 EGP ✨",
-
   "Herring Roe with Vegetable Oil": "💰 سعر بطارخ رنجة بالزيت النباتي مرملة كاملة:\nالوزن: 250 G\nالسعر: 250 EGP ✨",
-
   "Herring Roe with Orange Sauce": "💰 سعر بطارخ رنجة بصوص البرتقال مرملة مهروسة:\nالوزن: 250 G\nالسعر: 250 EGP ✨",
-
   "Herring Roe with Honey Sauce": "💰 سعر بطارخ رنجة بصوص العسل مرملة مهروسة:\nالوزن: 250 G\nالسعر: 250 EGP ✨",
-
   "Herring Roe White": "💰 سعر نشو بطارخ رنجة بالزيت النباتي:\nالوزن: 250 G\nالسعر: 250 EGP ✨",
-
   "Gutted Smoked Mackerel Salted": "💰 سعر ماكريل مدخن مملح منزوع الأحشاء:\nالوزن: 1 KG\nالسعر: 410 EGP ✨",
-
   "Smoked Salted Mackerel Vacuumed": "💰 سعر ماكريل مدخن مملح منزوع الأحشاء فاكيوم:\nالوزن: 1 KG\nالسعر: 460 EGP ✨",
-
   "Mackerel Fillets with Spices Vacuumed": "💰 سعر ماكريل فيليه بالتوابل فاكيوم:\nالوزن: 1 KG\nالسعر: 800 EGP ✨",
-
   "Mackerel Fillets Vacuumed": "💰 سعر ماكريل فيليه سادة فاكيوم:\nالوزن: 1 KG\nالسعر: 800 EGP ✨",
-
   "Salted Grey Mullet with Vegetable Oil": "💰 سعر فيليه بوري مملح زيت نباتي:\nالوزن: 250 G\nالسعر: 250 EGP ✨",
-
   "Salted Grey Mullet with Smoked Oil": "💰 سعر فيليه بوري مملح زيت دخان:\nالوزن: 250 G\nالسعر: 250 EGP ✨",
-
   "Salted Grey Mullet with Beet Sauce": "💰 سعر فسيخ سبريد بصوص البنجر:\nالوزن: 250 G\nالسعر: 250 EGP ✨",
-
   "Salted Grey Mullet with Curry Sauce": "💰 سعر فسيخ سبريد بصوص الكاري:\nالوزن: 250 G\nالسعر: 250 EGP ✨",
-
   "Salted Grey Mullet with Pepper Sauce": "💰 سعر فسيخ سبريد بصوص الفلفل:\nالوزن: 250 G\nالسعر: 250 EGP ✨",
-
   "Smoked Salted Mullet": "💰 سعر بوري مملح مدخن فسيخ:\nالوزن: 230 G\nالسعر: 150 EGP ✨",
-
   "Salted Mullet without Bacteria": "💰 سعر فسيخ بدون بكتيريا:\nالوزن: 1 KG\nالسعر: 460 EGP ✨",
-
   "Salted Mullet with Roe": "💰 سعر فسيخ مبطرخ بدون بكتيريا:\nالوزن: 1 KG\nالسعر: 560 EGP ✨"
 }
+
 # ================== LOGIC ==================
 def normalize(text):
     return (
@@ -182,7 +114,7 @@ def get_answer(text):
     if "منيو" in q or "كتالوج" in q:
         return f"ده لينك منيو المنتجات بتاعتنا كاملة بالأسعار:\n{FAQ_MAP['منيو']}"
 
-     # 2. الشكاوي الحساسة (أولوية قصوى)
+    # 2. الشكاوي الحساسة (أولوية قصوى)
     if any(w in q for w in ["دود", "مدود", "طفيليات"]):
         return FAQ_MAP["الرنجة فيها دود"]
 
@@ -193,22 +125,16 @@ def get_answer(text):
     if any(w in q for w in ["ليه", "سبب", "فرق", "الفرق", "ازاي", "ازي"]):
         if "فيليه" in q and "ناشف" in q:
             return FAQ_MAP["ليه الرنجة الفيليه ناشفة"]
-
         if "فيليه" in q and "عادي" in q:
             return FAQ_MAP["الفرق بين الرنجة الفيليه والعادية"]
-
         if "24" in q:
             return FAQ_MAP["الفرق بين الرنجة العادية وعيار 24"]
-
         if "فاكيوم" in q and "رنجه" in q:
             return FAQ_MAP["يعني ايه رنجة فاكيوم"]
-
         if "فسيخ" in q and "فاكيوم" in q:
             return FAQ_MAP["الفرق بين الكيس الاسود والجولد فاكيوم في الفسيخ"]
-
         if "سلمون" in q:
             return FAQ_MAP["الفرق بين السلمون الفاكيوم والكيس الاسود"]
-
         if "تون" in q or "تونه" in q:
             if "زيت" in q or "مياه" in q:
                 return FAQ_MAP["التونة زيت ولا مياه"]
@@ -221,24 +147,20 @@ def get_answer(text):
     # 4. أسئلة التخزين والاستخدام
     if "احفظ" in q or "تخزين" in q:
         return FAQ_MAP["كيفية الاحتفاظ بالرنجة بعد الشراء"]
-
     if "اشوي" in q or "اشوا" in q or "حراره" in q:
         return FAQ_MAP["ممكن اشوي الرنجة"]
-
     if "اسخن" in q:
         return FAQ_MAP["هل ممكن اسخن الرنجة"]
 
     # 5. الوزن والتعبئة
     if "وزن" in q and "كرتونه" in q:
         return FAQ_MAP["وزن كرتونة الرنجة المجمدة"]
-
     if "مجمد" in q or "فريش" in q:
         return FAQ_MAP["الفرق بين الرنجة المجمدة والفريش"]
 
     # 6. الفسيخ والبطارخ
     if "فسيخ" in q and "بيتملح" in q:
         return FAQ_MAP["الفسيخ بيتملح ازاي"]
-
     if "بطارخ" in q:
         if "زبد" in q:
             return FAQ_MAP["بطارخ البوري بالزبدة"]
@@ -247,30 +169,25 @@ def get_answer(text):
     # 7. التونة والسلمون
     if "مطهيه" in q:
         return FAQ_MAP["هل التونة المطهية جاهزة للاكل"]
-
     if "سلمون" in q and "طهي" in q:
         return FAQ_MAP["نوع السلمون للطهي"]
 
     # 8. الأسعار والجملة
     if "جمله" in q:
         return FAQ_MAP["الجملة او اسعار الجملة"]
-
     if "غالي" in q or "سعر" in q:
-        return FAQ_MAP["ليه المنتجات غالية"]
+        if "رنج" not in q and "فسيخ" not in q and "بوري" not in q and "ماكريل" not in q:
+            return FAQ_MAP["ليه المنتجات غالية"]
 
     # 9. الإدارة والتواصل
     if "تصدير" in q:
         return FAQ_MAP["التصدير"]
-
     if "مشتريات" in q:
         return FAQ_MAP["رقم ادارة المشتريات"]
-
     if "توظيف" in q or "hr" in q:
         return FAQ_MAP["التوظيف"]
-
     if "حسابات" in q:
         return FAQ_MAP["مدير الحسابات"]
-
     if "توريد" in q or "مطاعم" in q or "فنادق" in q:
         return FAQ_MAP["توريد للفنادق والمطاعم"]
 
@@ -281,7 +198,6 @@ def get_answer(text):
     # 11. ساندويتشات وسلطات
     if "سندوتش" in q or "ساندويتش" in q:
         return FAQ_MAP["السندوتشات"]
-
     if "سلطه" in q or "سلطة" in q:
         return FAQ_MAP["السلطة"]
 
@@ -290,132 +206,99 @@ def get_answer(text):
         return FAQ_MAP["هل في مواد حافظة"]
 
     # ================== ذكاء المنتجات المحددة ==================
-
     # فسيخ وبوري
-if "فسيخ" in q or "بوري" in q:
-    if "بنجر" in q:
-        return PRODUCT_MAP["Salted Grey Mullet with Beet Sauce"]
-    if "كاري" in q:
-        return PRODUCT_MAP["Salted Grey Mullet with Curry Sauce"]
-    if "فلفل" in q:
-        return PRODUCT_MAP["Salted Grey Mullet with Pepper Sauce"]
-    if "مدخن" in q:
-        return PRODUCT_MAP["Smoked Salted Mullet"]
-    if "مبطرخ" in q:
-        return PRODUCT_MAP["Salted Mullet with Roe"]
+    if "فسيخ" in q or "بوري" in q:
+        if "بنجر" in q: return PRODUCT_MAP["Salted Grey Mullet with Beet Sauce"]
+        if "كاري" in q: return PRODUCT_MAP["Salted Grey Mullet with Curry Sauce"]
+        if "فلفل" in q: return PRODUCT_MAP["Salted Grey Mullet with Pepper Sauce"]
+        if "مدخن" in q: return PRODUCT_MAP["Smoked Salted Mullet"]
+        if "مبطرخ" in q: return PRODUCT_MAP["Salted Mullet with Roe"]
+        return (
+            "💰 تشكيلة الفسيخ والبوري:\n"
+            f"- {PRODUCT_MAP['Salted Mullet without Bacteria']}\n"
+            f"- {PRODUCT_MAP['Salted Mullet with Roe']}\n"
+            f"- {PRODUCT_MAP['Smoked Salted Mullet']}\n"
+            f"- {PRODUCT_MAP['Salted Grey Mullet with Vegetable Oil']}\n"
+            f"- {PRODUCT_MAP['Salted Grey Mullet with Smoked Oil']}\n"
+            f"- {PRODUCT_MAP['Salted Grey Mullet with Beet Sauce']}\n"
+            f"- {PRODUCT_MAP['Salted Grey Mullet with Curry Sauce']}\n"
+            f"- {PRODUCT_MAP['Salted Grey Mullet with Pepper Sauce']}"
+        )
 
-    return (
-        "💰 تشكيلة الفسيخ والبوري:\n"
-        f"- {PRODUCT_MAP['Salted Mullet without Bacteria']}\n"
-        f"- {PRODUCT_MAP['Salted Mullet with Roe']}\n"
-        f"- {PRODUCT_MAP['Smoked Salted Mullet']}\n"
-        f"- {PRODUCT_MAP['Salted Grey Mullet with Vegetable Oil']}\n"
-        f"- {PRODUCT_MAP['Salted Grey Mullet with Smoked Oil']}\n"
-        f"- {PRODUCT_MAP['Salted Grey Mullet with Beet Sauce']}\n"
-        f"- {PRODUCT_MAP['Salted Grey Mullet with Curry Sauce']}\n"
-        f"- {PRODUCT_MAP['Salted Grey Mullet with Pepper Sauce']}"
-    )
+    # رنجة
+    if "رنج" in q:
+        if "فيليه" in q:
+            if "زيت" in q: return PRODUCT_MAP["Herring Fillets with Vegetable Oil"]
+            if "فلفل" in q: return PRODUCT_MAP["Herring Fillets with Pepper Sauce"]
+            if "كاري" in q: return PRODUCT_MAP["Herring Fillets with Curry Sauce"]
+            if "سكر" in q: return PRODUCT_MAP["Herring Fillets with Sweet Sauce"]
+            if "كافيار" in q: return PRODUCT_MAP["Herring Fillets with Pepper Sauce and Caviar"]
+            return PRODUCT_MAP["Herring Fillets without Oil"]
+        if "24" in q:
+            if "مبطرخ" in q: return PRODUCT_MAP["Smoked Herring 24 Kerat with Roe"]
+            return PRODUCT_MAP["Smoked Herring 24 Kerat"]
+        if "فاكيوم" in q:
+            if "مبطرخ" in q: return PRODUCT_MAP["Smoked Vacuumed Herring with Roe"]
+            if "منزوع" in q: return PRODUCT_MAP["Gutted Smoked Vacuumed Herring"]
+            return PRODUCT_MAP["Smoked Herring in Vacuum Packing"]
+        if "مبطرخ" in q: return PRODUCT_MAP["Smoked Herring with Roe"]
+        return (
+            "💰 تشكيلة الرنجة المتاحة:\n"
+            f"- {PRODUCT_MAP['Smoked Herring']}\n"
+            f"- {PRODUCT_MAP['Smoked Herring with Roe']}\n"
+            f"- {PRODUCT_MAP['Smoked Herring 24 Kerat']}\n"
+            f"- {PRODUCT_MAP['Smoked Herring 24 Kerat with Roe']}\n"
+            f"- {PRODUCT_MAP['Smoked Herring in Vacuum Packing']}\n"
+            f"- {PRODUCT_MAP['Gutted Smoked Vacuumed Herring']}"
+        )
 
-# رنجة
-if "رنج" in q:
-    if "فيليه" in q:
-        if "زيت" in q:
-            return PRODUCT_MAP["Herring Fillets with Vegetable Oil"]
-        if "فلفل" in q:
-            return PRODUCT_MAP["Herring Fillets with Pepper Sauce"]
-        if "كاري" in q:
-            return PRODUCT_MAP["Herring Fillets with Curry Sauce"]
-        if "سكر" in q:
-            return PRODUCT_MAP["Herring Fillets with Sweet Sauce"]
-        if "كافيار" in q:
-            return PRODUCT_MAP["Herring Fillets with Pepper Sauce and Caviar"]
-        return PRODUCT_MAP["Herring Fillets without Oil"]
+    # بطارخ رنجة
+    if "بطارخ" in q or "كافيار" in q:
+        if "عسل" in q: return PRODUCT_MAP["Herring Roe with Honey Sauce"]
+        if "برتقال" in q: return PRODUCT_MAP["Herring Roe with Orange Sauce"]
+        if "نشو" in q: return PRODUCT_MAP["Herring Roe White"]
+        return (
+            "💰 تشكيلة بطارخ الرنجة:\n"
+            f"- {PRODUCT_MAP['Herring Roe with Vegetable Oil']}\n"
+            f"- {PRODUCT_MAP['Herring Roe with Orange Sauce']}\n"
+            f"- {PRODUCT_MAP['Herring Roe with Honey Sauce']}\n"
+            f"- {PRODUCT_MAP['Herring Roe White']}"
+        )
 
-    if "24" in q:
-        if "مبطرخ" in q:
-            return PRODUCT_MAP["Smoked Herring 24 Kerat with Roe"]
-        return PRODUCT_MAP["Smoked Herring 24 Kerat"]
+    # سبريد رنجة
+    if "سبريد" in q:
+        if "200" in q: return PRODUCT_MAP["Herring with Caviar Spread 200"]
+        if "130" in q: return PRODUCT_MAP["Herring with Caviar Spread 130"]
+        if "تيوب" in q: return PRODUCT_MAP["Herring with Caviar Spread Tube"]
+        return (
+            "💰 تشكيلة سبريد الرنجة:\n"
+            f"- {PRODUCT_MAP['Herring with Caviar Spread 200']}\n"
+            f"- {PRODUCT_MAP['Herring with Caviar Spread 130']}\n"
+            f"- {PRODUCT_MAP['Herring with Caviar Spread Tube']}"
+        )
 
-    if "فاكيوم" in q:
-        if "مبطرخ" in q:
-            return PRODUCT_MAP["Smoked Vacuumed Herring with Roe"]
-        if "منزوع" in q:
-            return PRODUCT_MAP["Gutted Smoked Vacuumed Herring"]
-        return PRODUCT_MAP["Smoked Herring in Vacuum Packing"]
+    # ماكريل
+    if "ماكريل" in q:
+        if "فيليه" in q: return PRODUCT_MAP["Mackerel Fillets Vacuumed"]
+        if "فاكيوم" in q: return PRODUCT_MAP["Smoked Salted Mackerel Vacuumed"]
+        return (
+            "💰 تشكيلة الماكريل:\n"
+            f"- {PRODUCT_MAP['Gutted Smoked Mackerel Salted']}\n"
+            f"- {PRODUCT_MAP['Smoked Salted Mackerel Vacuumed']}\n"
+            f"- {PRODUCT_MAP['Mackerel Fillets Vacuumed']}\n"
+            f"- {PRODUCT_MAP['Mackerel Fillets with Spices Vacuumed']}"
+        )
 
-    if "مبطرخ" in q:
-        return PRODUCT_MAP["Smoked Herring with Roe"]
-
-    return (
-        "💰 تشكيلة الرنجة المتاحة:\n"
-        f"- {PRODUCT_MAP['Smoked Herring']}\n"
-        f"- {PRODUCT_MAP['Smoked Herring with Roe']}\n"
-        f"- {PRODUCT_MAP['Smoked Herring 24 Kerat']}\n"
-        f"- {PRODUCT_MAP['Smoked Herring 24 Kerat with Roe']}\n"
-        f"- {PRODUCT_MAP['Smoked Herring in Vacuum Packing']}\n"
-        f"- {PRODUCT_MAP['Gutted Smoked Vacuumed Herring']}"
-    )
-
-# بطارخ رنجة
-if "بطارخ" in q or "كافيار" in q:
-    if "عسل" in q:
-        return PRODUCT_MAP["Herring Roe with Honey Sauce"]
-    if "برتقال" in q:
-        return PRODUCT_MAP["Herring Roe with Orange Sauce"]
-    if "نشو" in q:
-        return PRODUCT_MAP["Herring Roe White"]
-
-    return (
-        "💰 تشكيلة بطارخ الرنجة:\n"
-        f"- {PRODUCT_MAP['Herring Roe with Vegetable Oil']}\n"
-        f"- {PRODUCT_MAP['Herring Roe with Orange Sauce']}\n"
-        f"- {PRODUCT_MAP['Herring Roe with Honey Sauce']}\n"
-        f"- {PRODUCT_MAP['Herring Roe White']}"
-    )
-
-# سبريد رنجة
-if "سبريد" in q:
-    if "200" in q:
-        return PRODUCT_MAP["Herring with Caviar Spread 200"]
-    if "130" in q:
-        return PRODUCT_MAP["Herring with Caviar Spread 130"]
-    if "تيوب" in q:
-        return PRODUCT_MAP["Herring with Caviar Spread Tube"]
-
-    return (
-        "💰 تشكيلة سبريد الرنجة:\n"
-        f"- {PRODUCT_MAP['Herring with Caviar Spread 200']}\n"
-        f"- {PRODUCT_MAP['Herring with Caviar Spread 130']}\n"
-        f"- {PRODUCT_MAP['Herring with Caviar Spread Tube']}"
-    )
-
-# ماكريل
-if "ماكريل" in q:
-    if "فيليه" in q:
-        return PRODUCT_MAP["Mackerel Fillets Vacuumed"]
-    if "فاكيوم" in q:
-        return PRODUCT_MAP["Smoked Salted Mackerel Vacuumed"]
-
-    return (
-        "💰 تشكيلة الماكريل:\n"
-        f"- {PRODUCT_MAP['Gutted Smoked Mackerel Salted']}\n"
-        f"- {PRODUCT_MAP['Smoked Salted Mackerel Vacuumed']}\n"
-        f"- {PRODUCT_MAP['Mackerel Fillets Vacuumed']}\n"
-        f"- {PRODUCT_MAP['Mackerel Fillets with Spices Vacuumed']}"
-    )
-
-# تونة
-if "تون" in q or "تونه" in q:
-    if any(w in q for w in ["فرق", "ابيض", "احمر"]):
-        return FAQ_MAP["الفرق بين لحم التونة الابيض والاحمر"]
-    return "💰 تونة أبو السيد يلوفين – جاهزة للأكل، بدون مواد حافظة. تحب أبعتلك المنيو؟"
+    # تونة
+    if "تون" in q or "تونه" in q:
+        return "💰 تونة أبو السيد يلوفين – جاهزة للأكل، بدون مواد حافظة. تحب أبعتلك المنيو؟"
 
     # متابعة ذكية
     if q in ["اه", "ايوه", "ياريت"]:
         return "تمام 👌 تحب تشوف أسعار رنجة ولا فسيخ ولا بطارخ؟"
 
-    return "بعتذر لحضرتك يافندم . ممكن توضح السؤال أكتر"
-  
+    return "بعتذر لحضرتك يافندم.. ممكن توضح السؤال أكتر عشان أقدر أساعدك؟"
+
 # ================== WEBHOOK ROUTES ==================
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -446,4 +329,3 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
