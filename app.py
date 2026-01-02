@@ -135,8 +135,7 @@ def get_answer(text):
             return FAQ_MAP["الفرق بين الرنجة الفيليه والعادية"]
         if "24" in q:
             return FAQ_MAP["الفرق بين الرنجة العادية وعيار 24"]
-        if any(w in q for w in ["ايه الفاكيوم", "يعني ايه فاكيوم", "فاكيوم"]):
-        return FAQ_MAP["يعني ايه رنجة فاكيوم"]
+        
         if "فسيخ" in q and "فاكيوم" in q:
             return FAQ_MAP["الفرق بين الكيس الاسود والجولد فاكيوم في الفسيخ"]
         if "سلمون" in q:
@@ -335,5 +334,6 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
 
