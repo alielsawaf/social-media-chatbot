@@ -88,7 +88,14 @@ PRODUCT_MAP = {
 }
 
 # ================== LOGIC ==================
+
+# ✅ تعديل دعم الأرقام عربي / إنجليزي
 def normalize(text):
+    arabic_digits = "٠١٢٣٤٥٦٧٨٩"
+    english_digits = "0123456789"
+    for a, e in zip(arabic_digits, english_digits):
+        text = text.replace(a, e)
+
     return (
         text.lower()
         .replace("ة", "ه")
@@ -98,8 +105,26 @@ def normalize(text):
         .strip()
     )
 
+# ✅ إضافة مرادفات فقط (بدون كسر أي منطق)
+SYNONYMS = {
+    "رنجه": ["رنجة", "الرنجه", "رنق"],
+    "فسيخ": ["فسيخ", "فسخ"],
+    "فيليه": ["فيليه", "فيلية", "fillet", "filet"],
+    "فاكيوم": ["فاكيوم", "vacuum"],
+    "24": ["24", "عيار", "قيراط"],
+    "سعر": ["سعر", "بكام", "كام"]
+}
+
+def expand_question(q):
+    expanded = q
+    for key, words in SYNONYMS.items():
+        for w in words:
+            if w in q:
+                expanded += f" {key}"
+    return expanded
+
 def get_answer(text):
-    q = normalize(text)
+    q = expand_question(normalize(text))
 
     # 1. الترحيب والشكر
     greetings = ["اهلا", "سلام", "مساء", "صباح", "مرحبا", "هاي", "ازيك"]
@@ -329,4 +354,3 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-
