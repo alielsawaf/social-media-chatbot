@@ -25,7 +25,6 @@ FAQ_MAP = {
   "الفرق بين الكيس الاسود والجولد فاكيوم في الفسيخ": "الأحجام الصغيرة بتكون في التغليف الجولد فاكيوم بحد أقصى 600 جرام، والأحجام الأكبر بتكون في التغليف الأسود وممكن توصل لكيلو أو كيلو و200 أو 800 جرام.",
   "الفرق بين الرنجة العادية وعيار 24": "عيار 24 عدد ساعات التدخين فيه أطول، حجم السمكة أصغر، وطعم التدخين معزز أكثر بسبب زيادة ساعات التدخين.",
   "كيفية الاحتفاظ بالرنجة بعد الشراء": "يفضل حفظ الرنجة في الفريزر بعد الشراء.",
-  "يعني ايه رنجة فاكيوم": "رنجة مغلفة في عبوات مفرغة الهواء.",
   "الفسيخ بيتملح ازاي": "الفسيخ يتم تصنيعه من سمك البوري، يتم تمليحه فريش لوقف النمو البكتيري، تمليح جاف، ويحفظ في ثلاجات بدرجات حرارة من 0 إلى 4.",
   "الفرق بين لحم التونة الابيض والاحمر": "اللحم الأبيض أفتح من الأحمر لأن اللون الأحمر ناتج عن الميوجلوبين والهيموجلوبين، واللحم الأحمر يحتوي على نسبة بروتين أعلى ويكون طري أكثر.",
   "ليه الفسيخ بيكون في دم": "السمكة جاهزة للأكل، والدم بيكون نتيجة التمليح فريش والتجميد، وعند فك التجميد بتظهر السوائل.",
@@ -100,80 +99,105 @@ def normalize(text):
 def get_answer(text):
     q = normalize(text)
 
-    # 1. الترحيب والشكر
+    # --- 1. الترحيب والشكر ---
     if any(w in q for w in ["شكرا", "شكر", "تمام", "ميرسي", "تسلم", "جزاك"]):
         return "تحت أمرك يا فندم 🌹 لو احتاجت أي حاجة ابعتلنا في أي وقت."
     if any(w == q or q.startswith(w) for w in ["اهلا", "سلام", "مساء", "صباح", "مرحبا", "هاي", "ازيك"]):
         return "أهلاً بك في رنجة أبو السيد 👋 نورتنا.. أساعد حضرتك ازاي؟"
 
-    # 2. الشكاوي والأسئلة الحساسة
+    # --- 2. الشكاوي والأسئلة الحساسة ---
     if any(w in q for w in ["دود", "مدود", "طفيليات"]): return FAQ_MAP["الرنجة فيها دود"]
     if "دم" in q: return FAQ_MAP["ليه الفسيخ بيكون في دم"]
     if any(w in q for w in ["اتاكد", "اصلي", "الاصلي", "مضروب", "اعرف منين"]): return FAQ_MAP["ازاي اتأكد ان الرنجة دي رنجة ابو السيد"]
 
-    # 3. الإدارة والتواصل (الموجودة سابقاً)
+    # --- 3. الإدارة والتواصل ---
     if "تصدير" in q: return FAQ_MAP["التصدير"]
     if "مشتريات" in q: return FAQ_MAP["رقم ادارة المشتريات"]
     if any(w in q for w in ["توظيف", "شغل", "وظيفه", "hr"]): return FAQ_MAP["التوظيف"]
-    if "حسابات" in q: return FAQ_MAP["مدير الحسابات"]
-    if any(w in q for w in ["توريد", "مطاعم", "فنادق"]): return FAQ_MAP["توريد للفنادق والمطاعم"]
     if any(w in q for w in ["مواعيد", "ساعه", "وقت", "فاتحين", "مفتوح"]): return FAQ_MAP["مواعيد الفروع"]
     if "جمله" in q: return FAQ_MAP["الجملة او اسعار الجملة"]
     if "غالي" in q: return FAQ_MAP["ليه المنتجات غالية"]
 
-    # 4. التونة والسلمون (بالتفصيل)
+    # --- 4. التونة والسلمون والماكريل (تحديد دقيق) ---
     if "تونه" in q or "تون" in q:
         if any(w in q for w in ["زيت", "ميه", "مياه"]): return FAQ_MAP["التونة زيت ولا مياه"]
         if any(w in q for w in ["منين", "مكان", "صيد", "بتصطادوا"]): return FAQ_MAP["بتصطادوا التونة منين"]
         if "مطهيه" in q or "جاهزه" in q: return FAQ_MAP["هل التونة المطهية جاهزة للاكل"]
-        if "نوع" in q: return FAQ_MAP["نوع التونة"]
         return FAQ_MAP["الفرق بين لحم التونة الابيض والاحمر"]
     
     if "سلمون" in q:
         if any(w in q for w in ["طبخ", "طهي", "نار", "ني"]): return FAQ_MAP["نوع السلمون للطهي"]
         return FAQ_MAP["الفرق بين السلمون الفاكيوم والكيس الاسود"]
 
-    # 5. الفسيخ والبوري (بالتفصيل)
+    if "ماكريل" in q:
+        if any(w in q for w in ["توابل", "بهارات"]): return FAQ_MAP["توابل الماكريل الفيليه"]
+        return f"💰 أسعار الماكريل المتاحة:\n- {PRODUCT_MAP['Gutted Smoked Mackerel Salted']}\n- {PRODUCT_MAP['Smoked Salted Mackerel Vacuumed']}\n- {PRODUCT_MAP['Mackerel Fillets Vacuumed']}"
+
+    # --- 5. الفسيخ والبوري (المنطق الجديد: محدد vs عام) ---
     if "فسيخ" in q or "بوري" in q:
-        if any(w in q for w in ["اسود", "ذهبي", "جولد", "لون الكيس", "فرق الكيس"]): return FAQ_MAP["الفرق بين الكيس الاسود والجولد فاكيوم في الفسيخ"]
-        if "بيتملح" in q or "طريقه" in q: return FAQ_MAP["الفسيخ بيتملح ازاي"]
+        # البحث عن المحدد أولاً
         if "كاري" in q: return PRODUCT_MAP["Salted Grey Mullet with Curry Sauce"]
         if "بنجر" in q: return PRODUCT_MAP["Salted Grey Mullet with Beet Sauce"]
         if "فلفل" in q: return PRODUCT_MAP["Salted Grey Mullet with Pepper Sauce"]
-        if "مبطرخ" in q: return PRODUCT_MAP["Salted Mullet with Roe"]
         if "مدخن" in q: return PRODUCT_MAP["Smoked Salted Mullet"]
+        if "مبطرخ" in q: return PRODUCT_MAP["Salted Mullet with Roe"]
         if "فيليه" in q or "زيت" in q: return PRODUCT_MAP["Salted Grey Mullet with Vegetable Oil"]
-        # رد عام للفسيخ
-        return f"💰 أسعار الفسيخ:\n- {PRODUCT_MAP['Salted Mullet without Bacteria']}\n- {PRODUCT_MAP['Salted Mullet with Roe']}\n- أو اطلب 'المنيو' لكل الأصناف."
+        if any(w in q for w in ["اسود", "ذهبي", "جولد", "لون الكيس"]): return FAQ_MAP["الفرق بين الكيس الاسود والجولد فاكيوم في الفسيخ"]
+        if "بيتملح" in q: return FAQ_MAP["الفسيخ بيتملح ازاي"]
+        
+        # إذا لم يجد كلمة محددة، يرسل كل أسعار الفسيخ
+        return (
+            "💰 قائمة أسعار الفسيخ والبوري:\n\n"
+            f"1. {PRODUCT_MAP['Salted Mullet without Bacteria']}\n\n"
+            f"2. {PRODUCT_MAP['Salted Mullet with Roe']}\n\n"
+            f"3. {PRODUCT_MAP['Smoked Salted Mullet']}\n\n"
+            f"4. {PRODUCT_MAP['Salted Grey Mullet with Vegetable Oil']}\n\n"
+            f"5. {PRODUCT_MAP['Salted Grey Mullet with Curry Sauce']}\n\n"
+            "للمزيد شوف المنيو هنا: https://heyzine.com/flip-book/31946f16d5.html"
+        )
 
-    # 6. الرنجة والبطارخ (بالتفصيل)
+    # --- 6. الرنجة والبطارخ (المنطق الجديد: محدد vs عام) ---
     if "رنج" in q:
+        # البحث عن المحدد أولاً
         if any(w in q for w in ["اشوي", "نار", "سخن", "تسخين"]): return FAQ_MAP["ممكن اشوي الرنجة"]
         if "يعني" in q and "فاكيوم" in q: return FAQ_MAP["يعني ايه رنجة فاكيوم"]
-        if "24" in q: return PRODUCT_MAP["Smoked Herring 24 Kerat"]
+        if "24" in q: 
+            if "مبطرخ" in q: return PRODUCT_MAP["Smoked Herring 24 Kerat with Roe"]
+            return PRODUCT_MAP["Smoked Herring 24 Kerat"]
         if "فيليه" in q:
             if "فلفل" in q and "كافيار" in q: return PRODUCT_MAP["Herring Fillets with Pepper Sauce and Caviar"]
             if "سكر" in q: return PRODUCT_MAP["Herring Fillets with Sweet Sauce"]
             if "كاري" in q: return PRODUCT_MAP["Herring Fillets with Curry Sauce"]
             return PRODUCT_MAP["Herring Fillets without Oil"]
-        if "فاكيوم" in q: return PRODUCT_MAP["Smoked Herring in Vacuum Packing"]
         if "مبطرخ" in q: return PRODUCT_MAP["Smoked Herring with Roe"]
-        return PRODUCT_MAP["Smoked Herring"]
+        if "فاكيوم" in q: return PRODUCT_MAP["Smoked Herring in Vacuum Packing"]
+        
+        # إذا لم يجد كلمة محددة، يرسل كل أسعار الرنجة
+        return (
+            "💰 قائمة أسعار الرنجة المتاحة:\n\n"
+            f"🔹 {PRODUCT_MAP['Smoked Herring']}\n\n"
+            f"🔹 {PRODUCT_MAP['Smoked Herring with Roe']}\n\n"
+            f"🔹 {PRODUCT_MAP['Smoked Herring 24 Kerat']}\n\n"
+            f"🔹 {PRODUCT_MAP['Herring Fillets without Oil']}\n\n"
+            "للمزيد شوف المنيو هنا: https://heyzine.com/flip-book/31946f16d5.html"
+        )
 
     if "بطارخ" in q:
         if "زبده" in q or "بوري" in q: return FAQ_MAP["بطارخ البوري بالزبدة"]
         if "عسل" in q: return PRODUCT_MAP["Herring Roe with Honey Sauce"]
         if "برتقال" in q: return PRODUCT_MAP["Herring Roe with Orange Sauce"]
-        return FAQ_MAP["انواع بطارخ الرنجة"]
+        return (
+            "💰 أنواع وأسعار البطارخ:\n\n"
+            f"🔸 {PRODUCT_MAP['Herring Roe with Vegetable Oil']}\n\n"
+            f"🔸 {PRODUCT_MAP['Herring Roe with Orange Sauce']}\n\n"
+            f"🔸 {PRODUCT_MAP['Herring Roe with Honey Sauce']}\n\n"
+            f"🔸 {PRODUCT_MAP['Herring Roe White']}"
+        )
 
-    # 7. أسئلة عامة أخرى
+    # --- 7. أسئلة عامة أخرى ---
     if any(w in q for w in ["سندوتش", "ساندوتش", "سلطه", "سلطات"]): return FAQ_MAP["السندوتشات"]
-    if "ماكريل" in q:
-        if any(w in q for w in ["توابل", "بهارات"]): return FAQ_MAP["توابل الماكريل الفيليه"]
-        return PRODUCT_MAP["Mackerel Fillets Vacuumed"]
     if "مجمد" in q and "تصنيع" in q: return FAQ_MAP["هل في سمك مجمد بدون تصنيع"]
     if "مجمد" in q or "فريش" in q: return FAQ_MAP["الفرق بين الرنجة المجمدة والفريش"]
-    if "وزن" in q and "كرتونه" in q: return FAQ_MAP["وزن كرتونة الرنجة المجمدة"]
     if "منيو" in q or "اسعار" in q or "كتالوج" in q: return FAQ_MAP["منيو"]
 
     return "بعتذر لحضرتك يافندم.. ممكن توضح سؤالك أكتر عشان أقدر أساعدك؟"
@@ -202,7 +226,7 @@ def send_message(user_id, text):
     url = f"https://graph.facebook.com/v12.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
     payload = {"recipient": {"id": user_id}, "message": {"text": text}}
     try: requests.post(url, json=payload)
-    except Exception as e: print(f"Error: {e}")
+    except: pass
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
