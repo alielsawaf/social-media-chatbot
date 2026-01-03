@@ -176,30 +176,24 @@ def get_answer(text):
 
 # ================== WEBHOOK ROUTES ==================
 
-@app.route("/webhook", methods=["GET"])
-def verify():
-    if request.args.get("hub.verify_token") == VERIFY_TOKEN:
-        return request.args.get("hub.challenge")
-    return "failed", 403
-
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
+    print(f"Incoming Data: {data}")  # السطر ده هيخليك تشوف الرسالة في الـ Logs
+    
     if data.get("object") == "page":
         for entry in data.get("entry", []):
             for ev in entry.get("messaging", []):
                 sender = ev["sender"]["id"]
-                # حماية: تجاهل رسائل البوت لنفسه ورسائل القراءة
                 if "message" in ev:
                     msg = ev["message"]
-                    if msg.get("is_echo"): continue
+                    # جرب تشيل شرط الـ is_echo مؤقتاً للتجربة
                     if "text" in msg:
                         msg_text = msg["text"]
                         reply = get_answer(msg_text)
                         send_message(sender, reply)
     return "ok", 200
-
-def send_message(user_id, text):
+  def send_message(user_id, text):
     url = f"https://graph.facebook.com/v12.0/me/messages?access_token={PAGE_ACCESS_TOKEN}"
     payload = {"recipient": {"id": user_id}, "message": {"text": text}}
     try:
@@ -209,3 +203,4 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
