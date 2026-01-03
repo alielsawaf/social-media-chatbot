@@ -222,7 +222,7 @@ def get_answer(text):
 
     # 11. ساندويتشات وسلطات
     if "سندوتش" in q or "ساندويتش" in q:
-        return FAQ_MAP["السندوتشات"]
+        return FAQ_MAP["السندوتشات|الساندوتشات"]
     if "سلطه" in q or "سلطة" in q:
         return FAQ_MAP["السلطة"]
 
@@ -354,4 +354,5 @@ def send_message(user_id, text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 
